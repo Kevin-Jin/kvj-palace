@@ -38,11 +38,7 @@ public class CliRemotePlayer extends Player {
 	public void chooseFaceUp(Game g) {
 		System.out.println("Waiting on Player " + (getPlayerId() + 1) + "...");
 
-		for (int i = 0; i < 3; i++) {
-			Card.Rank card = chooseCard(null, null, false, true);
-			getHand().remove(card);
-			getFaceUp().add(card);
-		}
+		super.chooseFaceUp(g);
 
 		System.out.println();
 	}
@@ -51,66 +47,10 @@ public class CliRemotePlayer extends Player {
 	public TurnContext playTurn(Game g) {
 		System.out.println("Waiting on Player " + (getPlayerId() + 1) + "...");
 
-		TurnContext state = new TurnContext(g);
-
-		if (!getHand().isEmpty()) {
-			state.currentPlayable = getHand();
-		} else if (!getFaceUp().isEmpty()) {
-			state.currentPlayable = getFaceUp();
-		} else if (!getFaceDown().isEmpty()) {
-			state.currentPlayable = getFaceDown();
-			state.blind = true;
-		}
-
-		Card.Rank card;
-		while ((card = chooseCard(null, null, false, true)) != null) {
-			boolean inCurrentPlayable = state.currentPlayable.remove(card);
-			if (state.blind && !state.g.isMoveLegal(card)) {
-				state.g.addToDiscardPile(card);
-				state.g.transferDiscardPile(getHand());
-				state.currentPlayable = getHand();
-				state.blind = false;
-			} else if (!inCurrentPlayable || !state.g.isMoveLegal(card)) {
-				//either this card wasn't in our hand/face up before (and we picked up the pile first)
-				//or we place a card from our hand that is lower in value than the current pile top card
-				//checking CliLocalPlayer.hasValidMove(state.currentPlayable) before doing
-				//state.currentPlayable.remove(card) will have the same effect as this check
-				state.g.transferDiscardPile(getHand());
-				if (!inCurrentPlayable)
-					state.currentPlayable.remove(card);
-				state.g.addToDiscardPile(card);
-				state.currentPlayable = getHand();
-			} else {
-				state.g.addToDiscardPile(card);
-				if (card == Card.Rank.TWO || state.g.getSameRankCount() == 4)
-					state.g.transferDiscardPile(null);
-			}
-
-			if (state.currentPlayable.isEmpty()) {
-				if (state.currentPlayable == getHand()) {
-					if (!getFaceUp().isEmpty()) {
-						state.currentPlayable = getFaceUp();
-					} else if (!getFaceDown().isEmpty()) {
-						state.currentPlayable = getFaceDown();
-						state.blind = true;
-					} else {
-						state.won = true;
-					}
-				} else if (state.currentPlayable == getFaceUp()) {
-					state.currentPlayable = getFaceDown();
-					state.blind = true;
-				} else if (state.currentPlayable == getFaceDown()) {
-					state.won = true;
-				}
-			}
-		}
-
-		while (state.g.canDraw() && getHand().size() < 3)
-			getHand().add(state.g.draw());
+		TurnContext state = super.playTurn(g);
 
 		System.out.println();
 
-		adapter.turnEnded();
 		return state;
 	}
 }

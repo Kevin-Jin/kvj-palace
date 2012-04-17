@@ -11,9 +11,4 @@ public abstract class BroadcastAdapter implements PlayerAdapter {
 		if (selected != null)
 			broadcast(PacketMaker.selectCard(selected));
 	}
-
-	@Override
-	public void turnEnded() {
-		broadcast(PacketMaker.endTurn());
-	}
 }

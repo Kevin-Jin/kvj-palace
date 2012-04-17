@@ -14,11 +14,6 @@ public class NoOperationAdapter implements PlayerAdapter {
 		
 	}
 
-	@Override
-	public void turnEnded() {
-		
-	}
-
 	public static NoOperationAdapter getInstance() {
 		return singleton;
 	}

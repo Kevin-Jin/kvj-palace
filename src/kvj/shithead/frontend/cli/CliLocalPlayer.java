@@ -1,6 +1,5 @@
 package kvj.shithead.frontend.cli;
 
-import java.util.Collections;
 import java.util.Scanner;
 
 import kvj.shithead.backend.Card;
@@ -91,6 +90,69 @@ public class CliLocalPlayer extends Player {
 	}
 
 	@Override
+	protected void switchToHand(TurnContext state) {
+		super.switchToHand(state);
+		System.out.println("Your hand: " + state.currentPlayable);
+	}
+
+	@Override
+	protected void switchToFaceUp(TurnContext state) {
+		if (state.currentPlayable == getHand())
+			System.out.print("You have exhausted your hand. ");
+		super.switchToFaceUp(state);
+		System.out.println("Your face up cards: " + state.currentPlayable);
+	}
+
+	@Override
+	protected void switchToFaceDown(TurnContext state) {
+		if (state.currentPlayable == getHand())
+			System.out.print("You have exhausted your hand. ");
+		else if (state.currentPlayable == getFaceUp())
+			System.out.print("You have exhausted your face up cards. ");
+		super.switchToFaceDown(state);
+		System.out.println("You must now choose from your face down cards.");
+	}
+
+	@Override
+	protected void outOfCards(TurnContext state) {
+		if (state.currentPlayable == getHand())
+			System.out.print("You have exhausted your hand. ");
+		else if (state.currentPlayable == getFaceUp())
+			System.out.print("You have exhausted your face up cards. ");
+		else if (state.currentPlayable == getFaceDown())
+			System.out.print("You have exhausted your face down cards. ");
+		super.outOfCards(state);
+		System.out.println("You have no cards remaining.");
+	}
+
+	@Override
+	protected void clearDiscardPile(TurnContext state) {
+		super.clearDiscardPile(state);
+		System.out.print("The discard pile has been cleared. ");
+		if (state.selection == null) {
+			assert state.g.canDraw() && state.currentPlayable.isEmpty();
+			System.out.println("Since cards can be drawn, you must draw and you cannot put down any more cards.");
+		}
+	}
+
+	@Override
+	protected void wildCardPlayed(TurnContext state) {
+		System.out.print("You have put down a wildcard. ");
+		if (state.selection == null) {
+			assert state.g.canDraw() && state.currentPlayable.isEmpty();
+			System.out.println("Since cards can be drawn, you must draw and you cannot put down any more cards.");
+		}
+	}
+
+	@Override
+	protected void cardsPickedUp(TurnContext state) {
+		if (!state.pickedUp.isEmpty())
+			System.out.println("You picked up " + state.pickedUp + ".");
+		else
+			System.out.println("You did not pick up any cards.");
+	}
+
+	@Override
 	public void chooseFaceUp(Game g) {
 		if (clearScreen) {
 			System.out.println("Player " + (getPlayerId() + 1) + " may press enter when ready...");
@@ -100,14 +162,7 @@ public class CliLocalPlayer extends Player {
 		}
 
 		System.out.println("You may choose any three of these cards to place as your face up cards: " + getHand() + ".");
-		TurnContext state = new TurnContext(g);
-		state.currentPlayable = getHand();
-		state.blind = false;
-		for (int j = 0; j < 3; j++) {
-			Card.Rank selection = chooseCard(state, "Choose one card: ", false, false);
-			getHand().remove(selection);
-			getFaceUp().add(selection);
-		}
+		super.chooseFaceUp(g);
 
 		if (clearScreen) {
 			System.out.println("Press enter to continue...");
@@ -118,83 +173,16 @@ public class CliLocalPlayer extends Player {
 		}
 	}
 
-	private boolean hasValidMove(TurnContext state) {
-		for (Card.Rank c : state.currentPlayable)
-			if (state.g.isMoveLegal(c))
-				return true;
-		return false;
-	}
-
-	private void putCard(TurnContext state) {
-		state.currentPlayable.remove(state.selection);
-		state.g.addToDiscardPile(state.selection);
-		state.moves.add(state.selection);
+	@Override
+	protected void putCard(TurnContext state) {
+		super.putCard(state);
 		System.out.println("Played " + state.selection + ".");
 	}
 
-	private void playCard(TurnContext state) {
-		putCard(state);
-		if (state.currentPlayable.isEmpty()) {
-			if (state.g.canDraw()) {
-				state.selection = null; //end the turn
-			} else if (state.currentPlayable == getHand()) {
-				System.out.print("You have exhausted your hand. ");
-				if (!getFaceUp().isEmpty()) {
-					state.currentPlayable = getFaceUp();
-					System.out.println("Your face up cards: " + state.currentPlayable);
-				} else if (!getFaceDown().isEmpty()) {
-					state.currentPlayable = getFaceDown();
-					state.blind = true;
-					System.out.println("You must now choose from your face down cards.");
-				} else {
-					state.won = true;
-					System.out.println("You have no cards remaining.");
-				}
-			} else if (state.currentPlayable == getFaceUp()) {
-				state.currentPlayable = getFaceDown();
-				state.blind = true;
-				System.out.println("You have exhausted your face up cards. You must now choose from your face down cards.");
-			} else if (state.currentPlayable == getFaceDown()) {
-				state.won = true;
-				System.out.println("You have exhausted your face down cards. You have no cards remaining.");
-			}
-		}
-	}
-
-	private void pickUpPile(TurnContext state, String message) {
+	@Override
+	protected void pickUpPile(TurnContext state, String message) {
 		System.out.println(message);
-		state.g.transferDiscardPile(state.pickedUp);
-		state.pickedUpDiscardPile = true;
-	}
-
-	private void finishTurn(TurnContext state) {
-		playCard(state);
-
-		boolean cleared = false, wildcard = false, sameRank = false;
-		while (!state.won && ((cleared = (state.g.getTopCard() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCard() == Card.Rank.TEN)) || (sameRank = !state.blind && state.currentPlayable.contains(state.selection))) && state.selection != null) {
-			if (cleared) {
-				state.g.transferDiscardPile(null);
-				System.out.print("The discard pile has been cleared. ");
-			}
-			if (wildcard)
-				System.out.print("You have put down a wildcard. ");
-			state.selection = chooseCard(state, "Choose next card to put down: ", sameRank, false);
-			if (state.selection != null)
-				playCard(state);
-			cleared = wildcard = sameRank = false;
-		}
-		if (cleared) {
-			assert state.g.canDraw();
-			state.g.transferDiscardPile(null);
-			System.out.println("The discard pile has been cleared. Since cards can be drawn, you must draw and you cannot put down any more cards.");
-		}
-		if (wildcard) {
-			assert state.g.canDraw();
-			System.out.println("You have put down a wildcard. Since cards can be drawn, you must draw and you cannot put down any more cards.");
-		}
-
-		while (state.g.canDraw() && getHand().size() + state.pickedUp.size() < 3)
-			state.pickedUp.add(state.g.draw());
+		super.pickUpPile(state, message);
 	}
 
 	@Override
@@ -206,49 +194,7 @@ public class CliLocalPlayer extends Player {
 			System.out.println();
 		}
 
-		TurnContext state = new TurnContext(g);
-
-		if (!getHand().isEmpty()) {
-			state.currentPlayable = getHand();
-			System.out.println("Your hand: " + state.currentPlayable);
-		} else if (!getFaceUp().isEmpty()) {
-			state.currentPlayable = getFaceUp();
-			System.out.println("Your face up cards: " + state.currentPlayable);
-		} else if (!getFaceDown().isEmpty()) {
-			state.currentPlayable = getFaceDown();
-			state.blind = true;
-			System.out.println("You must now choose from your face down cards.");
-		}
-
-		if (hasValidMove(state) || state.blind) {
-			state.selection = chooseCard(state, "Choose first card to put down: ", false, true);
-
-			if (!state.g.isMoveLegal(state.selection)) {
-				assert state.blind;
-				putCard(state);
-				pickUpPile(state, "You lost the gamble!");
-			} else {
-				finishTurn(state);
-			}
-		} else {
-			pickUpPile(state, "You cannot make any moves.");
-		}
-
-		if (!state.pickedUp.isEmpty()) {
-			getHand().addAll(state.pickedUp);
-			Collections.sort(getHand());
-			System.out.println("You picked up " + state.pickedUp + ".");
-			if (state.pickedUpDiscardPile) {
-				state.currentPlayable = getHand();
-				state.blind = false;
-				System.out.println("Your hand: " + getHand());
-
-				state.selection = chooseCard(state, "Choose first card of new discard pile: ", false, false);
-				finishTurn(state);
-			}
-		} else {
-			System.out.println("You did not pick up any cards.");
-		}
+		TurnContext state = super.playTurn(g);
 
 		if (clearScreen) {
 			System.out.println("Press enter to continue...");
@@ -258,7 +204,6 @@ public class CliLocalPlayer extends Player {
 			System.out.println();
 		}
 
-		adapter.turnEnded();
 		return state;
 	}
 }
