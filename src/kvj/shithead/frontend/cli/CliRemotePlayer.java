@@ -16,7 +16,8 @@ public class CliRemotePlayer extends Player {
 		this.client = client;
 	}
 
-	public Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean alwaysLegal, boolean noSpecialCards) {
+	@Override
+	public Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
 		Card.Rank selection = null;
 		if (client.fillBuffer(1)) {
 			if (client.buffer[0] == PacketMaker.SELECT_CARD) {
@@ -38,7 +39,7 @@ public class CliRemotePlayer extends Player {
 		System.out.println("Waiting on Player " + (getPlayerId() + 1) + "...");
 
 		for (int i = 0; i < 3; i++) {
-			Card.Rank card = chooseCard(null, null, false, false, false);
+			Card.Rank card = chooseCard(null, null, false, true);
 			getHand().remove(card);
 			getFaceUp().add(card);
 		}
@@ -62,7 +63,7 @@ public class CliRemotePlayer extends Player {
 		}
 
 		Card.Rank card;
-		while ((card = chooseCard(null, null, false, false, false)) != null) {
+		while ((card = chooseCard(null, null, false, true)) != null) {
 			boolean inCurrentPlayable = state.currentPlayable.remove(card);
 			if (state.blind && !state.g.isMoveLegal(card)) {
 				state.g.addToDiscardPile(card);

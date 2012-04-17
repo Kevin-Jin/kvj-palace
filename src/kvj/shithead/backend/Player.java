@@ -36,7 +36,7 @@ public abstract class Player {
 		return hand;
 	}
 
-	public abstract Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean alwaysLegal, boolean noSpecialCards);
+	public abstract Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
 
 	public abstract void chooseFaceUp(Game g);
 

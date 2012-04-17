@@ -48,7 +48,7 @@ public class CliLocalPlayer extends Player {
 	}
 
 	@Override
-	public Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean alwaysLegal, boolean noSpecialCards) {
+	public Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
 		Card.Rank selection;
 		if (sameRank) {
 			System.out.print("You have another " + state.selection + ". Would you like to put it down? (y/n): ");
@@ -65,16 +65,14 @@ public class CliLocalPlayer extends Player {
 		} else if (!state.blind) {
 			System.out.print(selectText);
 			selection = Card.Rank.getRankByText(scan.nextLine());
-			boolean notACard = false, notInHand = false, notLegal = false, specialCard = false;
-			while ((notACard = (selection == null)) || (notInHand = !state.currentPlayable.contains(selection)) || (notLegal = !alwaysLegal && !state.g.isMoveLegal(selection)) || (specialCard = noSpecialCards && (selection == Card.Rank.TWO || selection == Card.Rank.TEN))) {
+			boolean notACard = false, notInHand = false, notLegal = false;
+			while ((notACard = (selection == null)) || (notInHand = !state.currentPlayable.contains(selection)) || (notLegal = checkDiscardPile && !state.g.isMoveLegal(selection))) {
 				if (notACard)
 					System.out.print("Your selection is not a valid card. Try again: ");
 				else if (notInHand)
 					System.out.print("You do not have a " + selection + " in your hand. Try again: ");
 				else if (notLegal)
 					System.out.print("You may not put a " + selection + " on top of a " + state.g.getTopCard() + ". Try again: ");
-				else if (specialCard)
-					System.out.print("You may not start a pile with a wild or clear card. Try again: ");
 				selection = Card.Rank.getRankByText(scan.nextLine());
 			}
 		} else {
@@ -106,7 +104,7 @@ public class CliLocalPlayer extends Player {
 		state.currentPlayable = getHand();
 		state.blind = false;
 		for (int j = 0; j < 3; j++) {
-			Card.Rank selection = chooseCard(state, "Choose one card: ", false, true, false);
+			Card.Rank selection = chooseCard(state, "Choose one card: ", false, false);
 			getHand().remove(selection);
 			getFaceUp().add(selection);
 		}
@@ -169,6 +167,36 @@ public class CliLocalPlayer extends Player {
 		state.pickedUpDiscardPile = true;
 	}
 
+	private void finishTurn(TurnContext state) {
+		playCard(state);
+
+		boolean cleared = false, wildcard = false, sameRank = false;
+		while (!state.won && ((cleared = (state.g.getTopCard() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCard() == Card.Rank.TEN)) || (sameRank = !state.blind && state.currentPlayable.contains(state.selection))) && state.selection != null) {
+			if (cleared) {
+				state.g.transferDiscardPile(null);
+				System.out.print("The discard pile has been cleared. ");
+			}
+			if (wildcard)
+				System.out.print("You have put down a wildcard. ");
+			state.selection = chooseCard(state, "Choose next card to put down: ", sameRank, false);
+			if (state.selection != null)
+				playCard(state);
+			cleared = wildcard = sameRank = false;
+		}
+		if (cleared) {
+			assert state.g.canDraw();
+			state.g.transferDiscardPile(null);
+			System.out.println("The discard pile has been cleared. Since cards can be drawn, you must draw and you cannot put down any more cards.");
+		}
+		if (wildcard) {
+			assert state.g.canDraw();
+			System.out.println("You have put down a wildcard. Since cards can be drawn, you must draw and you cannot put down any more cards.");
+		}
+
+		while (state.g.canDraw() && getHand().size() + state.pickedUp.size() < 3)
+			state.pickedUp.add(state.g.draw());
+	}
+
 	@Override
 	public TurnContext playTurn(Game g) {
 		if (clearScreen) {
@@ -193,40 +221,14 @@ public class CliLocalPlayer extends Player {
 		}
 
 		if (hasValidMove(state) || state.blind) {
-			state.selection = chooseCard(state, "Choose first card to put down: ", false, false, false);
+			state.selection = chooseCard(state, "Choose first card to put down: ", false, true);
 
 			if (!state.g.isMoveLegal(state.selection)) {
 				assert state.blind;
 				putCard(state);
-				pickUpPile(state, "Your gamble failed!");
+				pickUpPile(state, "You lost the gamble!");
 			} else {
-				playCard(state);
-
-				boolean cleared = false, wildcard = false, sameRank = false;
-				while (!state.won && ((cleared = (state.g.getTopCard() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCard() == Card.Rank.TEN)) || (sameRank = !state.blind && state.currentPlayable.contains(state.selection))) && state.selection != null) {
-					if (cleared) {
-						state.g.transferDiscardPile(null);
-						System.out.print("The discard pile has been cleared. ");
-					}
-					if (wildcard)
-						System.out.print("You have put down a wildcard. ");
-					state.selection = chooseCard(state, "Choose next card to put down: ", sameRank, true, false);
-					if (state.selection != null)
-						playCard(state);
-					cleared = wildcard = sameRank = false;
-				}
-				if (cleared) {
-					assert state.g.canDraw();
-					state.g.transferDiscardPile(null);
-					System.out.println("The discard pile has been cleared. Since cards can be drawn, you must draw and you cannot put down any more cards.");
-				}
-				if (wildcard) {
-					assert state.g.canDraw();
-					System.out.println("You have put down a wildcard. Since cards can be drawn, you must draw and you cannot put down any more cards.");
-				}
-
-				while (state.g.canDraw() && getHand().size() + state.pickedUp.size() < 3)
-					state.pickedUp.add(state.g.draw());
+				finishTurn(state);
 			}
 		} else {
 			pickUpPile(state, "You cannot make any moves.");
@@ -241,11 +243,8 @@ public class CliLocalPlayer extends Player {
 				state.blind = false;
 				System.out.println("Your hand: " + getHand());
 
-				//TODO: should we allow player to stack cards when putting
-				//one down with putCardAfterPickup? cards of only the same
-				//rank, or can we use 10s and 2s?
-				state.selection = chooseCard(state, "Put down a card to start a new discard pile: ", false, false, true);
-				putCard(state);
+				state.selection = chooseCard(state, "Choose first card of new discard pile: ", false, false);
+				finishTurn(state);
 			}
 		} else {
 			System.out.println("You did not pick up any cards.");
