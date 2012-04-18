@@ -39,6 +39,17 @@ public abstract class Player {
 
 	public abstract Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
 
+	public void chooseFaceUp(Game g) {
+		TurnContext state = new TurnContext(g);
+		state.currentPlayable = getHand();
+		state.blind = false;
+		for (int i = 0; i < 3; i++) {
+			Card.Rank card = chooseCard(state, "Choose one card: ", false, true);
+			getHand().remove(card);
+			getFaceUp().add(card);
+		}
+	}
+
 	protected void switchToHand(TurnContext state) {
 		state.currentPlayable = getHand();
 		state.blind = false;
@@ -70,24 +81,6 @@ public abstract class Player {
 		
 	}
 
-	public void chooseFaceUp(Game g) {
-		TurnContext state = new TurnContext(g);
-		state.currentPlayable = getHand();
-		state.blind = false;
-		for (int i = 0; i < 3; i++) {
-			Card.Rank card = chooseCard(state, "Choose one card: ", false, true);
-			getHand().remove(card);
-			getFaceUp().add(card);
-		}
-	}
-
-	private boolean hasValidMove(TurnContext state) {
-		for (Card.Rank c : state.currentPlayable)
-			if (state.g.isMoveLegal(c))
-				return true;
-		return false;
-	}
-
 	protected void putCard(TurnContext state) {
 		state.currentPlayable.remove(state.selection);
 		state.g.addToDiscardPile(state.selection);
@@ -97,6 +90,13 @@ public abstract class Player {
 	protected void pickUpPile(TurnContext state, String message) {
 		state.g.transferDiscardPile(state.pickedUp);
 		state.pickedUpDiscardPile = true;
+	}
+
+	private boolean hasValidMove(TurnContext state) {
+		for (Card.Rank c : state.currentPlayable)
+			if (state.g.isMoveLegal(c))
+				return true;
+		return false;
 	}
 
 	private void playCard(TurnContext state) {

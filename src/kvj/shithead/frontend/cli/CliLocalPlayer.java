@@ -90,6 +90,27 @@ public class CliLocalPlayer extends Player {
 	}
 
 	@Override
+	public void chooseFaceUp(Game g) {
+		if (clearScreen) {
+			System.out.println("Player " + (getPlayerId() + 1) + " may press enter when ready...");
+			scan.nextLine();
+		} else {
+			System.out.println();
+		}
+
+		System.out.println("You may choose any three of these cards to place as your face up cards: " + getHand() + ".");
+		super.chooseFaceUp(g);
+
+		if (clearScreen) {
+			System.out.println("Press enter to continue...");
+			scan.nextLine();
+			clearScreen();
+		} else {
+			System.out.println();
+		}
+	}
+
+	@Override
 	protected void switchToHand(TurnContext state) {
 		super.switchToHand(state);
 		System.out.println("Your hand: " + state.currentPlayable);
@@ -117,8 +138,6 @@ public class CliLocalPlayer extends Player {
 	protected void outOfCards(TurnContext state) {
 		if (state.currentPlayable == getHand())
 			System.out.print("You have exhausted your hand. ");
-		else if (state.currentPlayable == getFaceUp())
-			System.out.print("You have exhausted your face up cards. ");
 		else if (state.currentPlayable == getFaceDown())
 			System.out.print("You have exhausted your face down cards. ");
 		super.outOfCards(state);
@@ -150,27 +169,6 @@ public class CliLocalPlayer extends Player {
 			System.out.println("You picked up " + state.pickedUp + ".");
 		else
 			System.out.println("You did not pick up any cards.");
-	}
-
-	@Override
-	public void chooseFaceUp(Game g) {
-		if (clearScreen) {
-			System.out.println("Player " + (getPlayerId() + 1) + " may press enter when ready...");
-			scan.nextLine();
-		} else {
-			System.out.println();
-		}
-
-		System.out.println("You may choose any three of these cards to place as your face up cards: " + getHand() + ".");
-		super.chooseFaceUp(g);
-
-		if (clearScreen) {
-			System.out.println("Press enter to continue...");
-			scan.nextLine();
-			clearScreen();
-		} else {
-			System.out.println();
-		}
 	}
 
 	@Override
