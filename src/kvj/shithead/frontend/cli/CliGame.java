@@ -4,25 +4,28 @@ import java.util.Scanner;
 
 import kvj.shithead.backend.Client;
 import kvj.shithead.backend.Game;
+import kvj.shithead.backend.TurnContext;
 import kvj.shithead.backend.adapter.ClientAdapter;
 import kvj.shithead.backend.adapter.HostAdapter;
 import kvj.shithead.backend.adapter.NoOperationAdapter;
 
 public class CliGame extends Game {
 	private final Scanner scan;
+	private final boolean splitScreen;
 
-	public CliGame(Scanner scan, int playerCount) {
+	public CliGame(Scanner scan, int playerCount, boolean splitScreen) {
 		super(playerCount);
 		this.scan = scan;
+		this.splitScreen = splitScreen;
 	}
 
 	@Override
 	public void constructLocalPlayers(int start, int amount, Client client, boolean host) {
 		for (int i = 0; i < amount; i++) {
 			if (host)
-				players[start + i] = new CliLocalPlayer(start + i, new HostAdapter(client, connected), scan, amount != 1);
+				players[start + i] = new CliLocalPlayer(start + i, new HostAdapter(client, connected), scan, splitScreen);
 			else
-				players[start + i] = new CliLocalPlayer(start + i, new ClientAdapter(client), scan, amount != 1);
+				players[start + i] = new CliLocalPlayer(start + i, new ClientAdapter(client), scan, splitScreen);
 			remainingPlayers.add(Integer.valueOf(start + i));
 			connectedCount++;
 		}
@@ -58,9 +61,11 @@ public class CliGame extends Game {
 		deal();
 		System.out.println();
 
-		for (int i = 0; i < players.length; i++) {
-			System.out.print("Player " + (i + 1) + " must choose his/her face up cards. ");
-			players[i].chooseFaceUp(this);
+		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++) {
+			System.out.print("Player " + (currentPlayer + 1) + " must choose his/her face up cards. ");
+			TurnContext cx = players[currentPlayer].chooseFaceUp(this);
+			if (splitScreen && players[currentPlayer] instanceof CliLocalPlayer)
+				System.out.println("Player " + (currentPlayer + 1) + " " + cx.events + ".");
 		}
 
 		findStartingPlayer();
@@ -71,7 +76,10 @@ public class CliGame extends Game {
 				printSummary();
 				System.out.print("It is now Player " + (currentPlayer + 1) + "'s turn. ");
 
-				if (players[currentPlayer].playTurn(this).won) {
+				TurnContext cx = players[currentPlayer].playTurn(this);
+				if (splitScreen && players[currentPlayer] instanceof CliLocalPlayer)
+					System.out.println("Player " + (currentPlayer + 1) + " " + cx.events + ".");
+				if (cx.won) {
 					System.out.println("Player " + (currentPlayer + 1) + " has won!");
 					remainingPlayers.remove(Integer.valueOf(currentPlayer));
 				}

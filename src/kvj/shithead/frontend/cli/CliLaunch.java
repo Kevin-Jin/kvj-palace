@@ -54,7 +54,7 @@ public class CliLaunch {
 				System.out.print("Please enter a value less than or equal to the maximum amount of players: ");
 				localPlayersStr = scan.nextLine();
 			}
-			CliGame g = new CliGame(scan, maxPlayers);
+			CliGame g = new CliGame(scan, maxPlayers, localPlayers != 1);
 			g.constructLocalPlayers(0, localPlayers, null, true);
 			g.populateDeck();
 			if (localPlayers < maxPlayers) {
@@ -84,7 +84,7 @@ public class CliLaunch {
 				localPlayersStr = scan.nextLine();
 			}
 			client.socket().getOutputStream().write(localPlayers);
-			CliGame g = new CliGame(scan, maxPlayers);
+			CliGame g = new CliGame(scan, maxPlayers, localPlayers != 1);
 			int i;
 			for (i = 0; i < connectedPlayers; i++)
 				g.constructRemotePlayer(i, client, false);
@@ -92,7 +92,7 @@ public class CliLaunch {
 			for (i = g.occupiedCount(); i < g.maxSize(); i++) {
 				System.out.println("Waiting for " + (g.maxSize() - i) + " more player(s)...");
 				if (client.socket().getInputStream().read() == PacketMaker.ADD_PLAYER)
-					g.constructRemotePlayer(i, client, true);
+					g.constructRemotePlayer(i, client, false);
 			}
 			if (client.socket().getInputStream().read() == PacketMaker.DECK) {
 				byte[] message = new byte[52];

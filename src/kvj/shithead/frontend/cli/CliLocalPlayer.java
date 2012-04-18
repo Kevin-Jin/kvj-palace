@@ -8,18 +8,6 @@ import kvj.shithead.backend.Player;
 import kvj.shithead.backend.TurnContext;
 import kvj.shithead.backend.adapter.PlayerAdapter;
 
-//game rules:
-//all cards are drawn at end of turn, and not after a card is played
-// so if draw deck is not empty and player used his entire hand,
-// he has to end his turn early and draw more cards even if one of
-// the drawn cards can be played.
-//TEN allows any other card to be played, TWO clears the pile
-// both can be placed after any card and both let the player put
-// down another card before the game moves on to the next player
-//4 consecutive cards of the same rank also clears the pile
-//the player who picks up the discard pile gets to put down one of
-// his cards to start the new pile before the game moves on to the
-// next player
 public class CliLocalPlayer extends Player {
 	private static void clearScreen() {
 		char[] newlines = new char[24];
@@ -56,11 +44,10 @@ public class CliLocalPlayer extends Player {
 				System.out.print("Please type Y (yes) or N (no): ");
 				yesNo = scan.nextLine();
 			}
-			if (yesNo.equalsIgnoreCase("N") || yesNo.equalsIgnoreCase("NO")) {
+			if (yesNo.equalsIgnoreCase("N") || yesNo.equalsIgnoreCase("NO"))
 				selection = null;
-			} else {
+			else
 				selection = state.selection;
-			}
 		} else if (!state.blind) {
 			System.out.print(selectText);
 			selection = Card.Rank.getRankByText(scan.nextLine());
@@ -90,7 +77,7 @@ public class CliLocalPlayer extends Player {
 	}
 
 	@Override
-	public void chooseFaceUp(Game g) {
+	public TurnContext chooseFaceUp(Game g) {
 		if (clearScreen) {
 			System.out.println("Player " + (getPlayerId() + 1) + " may press enter when ready...");
 			scan.nextLine();
@@ -99,7 +86,7 @@ public class CliLocalPlayer extends Player {
 		}
 
 		System.out.println("You may choose any three of these cards to place as your face up cards: " + getHand() + ".");
-		super.chooseFaceUp(g);
+		TurnContext state = super.chooseFaceUp(g);
 
 		if (clearScreen) {
 			System.out.println("Press enter to continue...");
@@ -108,6 +95,8 @@ public class CliLocalPlayer extends Player {
 		} else {
 			System.out.println();
 		}
+
+		return state;
 	}
 
 	@Override
@@ -174,7 +163,7 @@ public class CliLocalPlayer extends Player {
 	@Override
 	protected void putCard(TurnContext state) {
 		super.putCard(state);
-		System.out.println("Played " + state.selection + ".");
+		System.out.println("You " + state.events.get(state.events.size() - 1) + ".");
 	}
 
 	@Override

@@ -6,6 +6,20 @@ import java.util.List;
 
 import kvj.shithead.backend.adapter.PlayerAdapter;
 
+//game rules:
+//Player with lowest valued card (excluding special wild and clear cards)
+// starts the game and the player after gets the first choice of cards to play.
+//All cards are drawn at end of turn, and not after a card is played, so if the
+// draw deck is not empty and player used his entire hand, he has to end his
+// turn early and draw more cards even if one of the drawn cards can be played.
+//TEN allows any other card to be played, TWO clears the pile. Both can be
+// placed after any card and both let the player put down another card before
+// play moves on to the next player.
+//4 consecutive cards of the same rank also clears the pile and has the same
+// effect as a TWO.
+//The player who picks up the discard pile gets to put down 1 or more cards in
+// his hand (including the ones he picked up) before play moves on, as long as
+// the card combination is legal.
 public abstract class Player {
 	private final List<Card.Rank> faceDown;
 	private final List<Card.Rank> faceUp;
@@ -39,15 +53,21 @@ public abstract class Player {
 
 	public abstract Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
 
-	public void chooseFaceUp(Game g) {
+	protected void moveFromHandToFaceUp(TurnContext state) {
+		getHand().remove(state.selection);
+		getFaceUp().add(state.selection);
+		state.events.add(new PlayEvent.HandToFaceUp(state.selection));
+	}
+
+	public TurnContext chooseFaceUp(Game g) {
 		TurnContext state = new TurnContext(g);
 		state.currentPlayable = getHand();
 		state.blind = false;
 		for (int i = 0; i < 3; i++) {
-			Card.Rank card = chooseCard(state, "Choose one card: ", false, true);
-			getHand().remove(card);
-			getFaceUp().add(card);
+			state.selection = chooseCard(state, "Choose one card: ", false, true);
+			moveFromHandToFaceUp(state);
 		}
+		return state;
 	}
 
 	protected void switchToHand(TurnContext state) {
@@ -71,6 +91,7 @@ public abstract class Player {
 
 	protected void clearDiscardPile(TurnContext state) {
 		state.g.transferDiscardPile(null);
+		state.events.add(new PlayEvent.PileCleared());
 	}
 
 	protected void wildCardPlayed(TurnContext state) {
@@ -84,12 +105,13 @@ public abstract class Player {
 	protected void putCard(TurnContext state) {
 		state.currentPlayable.remove(state.selection);
 		state.g.addToDiscardPile(state.selection);
-		state.moves.add(state.selection);
+		state.events.add(new PlayEvent.CardPlayed(state.selection));
 	}
 
 	protected void pickUpPile(TurnContext state, String message) {
 		state.g.transferDiscardPile(state.pickedUp);
 		state.pickedUpDiscardPile = true;
+		state.events.add(new PlayEvent.PilePickedUp());
 	}
 
 	private boolean hasValidMove(TurnContext state) {

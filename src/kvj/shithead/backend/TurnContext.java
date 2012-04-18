@@ -5,7 +5,7 @@ import java.util.List;
 
 public class TurnContext {
 	public final Game g;
-	public final List<Card.Rank> moves;
+	public final List<PlayEvent> events;
 	public final List<Card.Rank> pickedUp;
 	public boolean pickedUpDiscardPile = false;
 	public List<Card.Rank> currentPlayable;
@@ -16,7 +16,7 @@ public class TurnContext {
 
 	public TurnContext(Game g) {
 		this.g = g;
-		moves = new ArrayList<Card.Rank>();
+		events = new ArrayList<PlayEvent>();
 		pickedUp = new ArrayList<Card.Rank>();
 	}
 }
