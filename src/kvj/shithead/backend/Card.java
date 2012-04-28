@@ -6,51 +6,43 @@ import java.util.Map;
 
 public class Card {
 	public enum Rank {
-		TWO,
-		THREE,
-		FOUR,
-		FIVE,
-		SIX,
-		SEVEN,
-		EIGHT,
-		NINE,
-		TEN,
-		JACK,
-		QUEEN,
-		KING,
-		ACE;
+		TWO("2"),
+		THREE("3"),
+		FOUR("4"),
+		FIVE("5"),
+		SIX("6"),
+		SEVEN("7"),
+		EIGHT("8"),
+		NINE("9"),
+		TEN("10"),
+		JACK("J"),
+		QUEEN("Q"),
+		KING("K"),
+		ACE("A");
+
+		private static final Map<String, Rank> cache;
+
+		static {
+			Map<String, Rank> namesToRanks = new HashMap<String, Rank>();
+			for (Rank r : Rank.values()) {
+				namesToRanks.put(r.toString(), r);
+				namesToRanks.put(r.altStr, r);
+			}
+			cache = Collections.unmodifiableMap(namesToRanks);
+		}
+
+		private String altStr;
+
+		private Rank(String alternate) {
+			altStr = alternate;
+		}
+
+		public String getShorthandNotation() {
+			return altStr;
+		}
 
 		public static Rank getRankByText(String name) {
-			Rank c;
-			if (name.equals("2") || name.equalsIgnoreCase("TWO"))
-				c = Rank.TWO;
-			else if (name.equals("3") || name.equalsIgnoreCase("THREE"))
-				c = Rank.THREE;
-			else if (name.equals("4") || name.equalsIgnoreCase("FOUR"))
-				c = Rank.FOUR;
-			else if (name.equals("5") || name.equalsIgnoreCase("FIVE"))
-				c = Rank.FIVE;
-			else if (name.equals("6") || name.equalsIgnoreCase("SIX"))
-				c = Rank.SIX;
-			else if (name.equals("7") || name.equalsIgnoreCase("SEVEN"))
-				c = Rank.SEVEN;
-			else if (name.equals("8") || name.equalsIgnoreCase("EIGHT"))
-				c = Rank.EIGHT;
-			else if (name.equals("9") || name.equalsIgnoreCase("NINE"))
-				c = Rank.NINE;
-			else if (name.equals("10") || name.equalsIgnoreCase("TEN"))
-				c = Rank.TEN;
-			else if (name.equalsIgnoreCase("J") || name.equalsIgnoreCase("JACK"))
-				c = Rank.JACK;
-			else if (name.equalsIgnoreCase("Q") || name.equalsIgnoreCase("QUEEN"))
-				c = Rank.QUEEN;
-			else if (name.equalsIgnoreCase("K") || name.equalsIgnoreCase("KING"))
-				c = Rank.KING;
-			else if (name.equalsIgnoreCase("A") || name.equalsIgnoreCase("ACE"))
-				c = Rank.ACE;
-			else
-				c = null;
-			return c;
+			return cache.get(name.toUpperCase());
 		}
 	}
 
@@ -59,9 +51,9 @@ public class Card {
 	private static final Map<Suit, Map<Rank, Card>> cache;
 
 	static {
-		HashMap<Suit, Map<Rank, Card>> suits = new HashMap<Suit, Map<Rank, Card>>();
+		Map<Suit, Map<Rank, Card>> suits = new HashMap<Suit, Map<Rank, Card>>();
 		for (Suit s : Suit.values()) {
-			HashMap<Rank, Card> cards = new HashMap<Rank, Card>();
+			Map<Rank, Card> cards = new HashMap<Rank, Card>();
 			for (Rank r : Rank.values())
 				cards.put(r, new Card(s, r));
 			suits.put(s, Collections.unmodifiableMap(cards));
@@ -89,5 +81,14 @@ public class Card {
 
 	public Rank getRank() {
 		return rank;
+	}
+
+	public byte serialize() {
+		//4 bits for rank (and we'll only need 2 bits for suit)
+		return (byte) (suit.ordinal() << 4 | rank.ordinal());
+	}
+
+	public static Card deserialize(byte code) {
+		return valueOf(Suit.values()[code >>> 4], Rank.values()[code & 0xF]);
 	}
 }

@@ -17,12 +17,12 @@ public class CliRemotePlayer extends Player {
 	}
 
 	@Override
-	public Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
-		Card.Rank selection = null;
+	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
+		Card selection = null;
 		if (client.fillBuffer(1)) {
 			if (client.buffer[0] == PacketMaker.SELECT_CARD) {
 				if (client.fillBuffer(2)) {
-					selection = Card.Rank.values()[client.buffer[1]];
+					selection = Card.deserialize(client.buffer[1]);
 					client.compactBuffer(2);
 				}
 			} else if (client.buffer[0] == PacketMaker.END_TURN) {

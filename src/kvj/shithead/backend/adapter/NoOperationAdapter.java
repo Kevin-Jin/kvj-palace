@@ -10,7 +10,7 @@ public class NoOperationAdapter implements PlayerAdapter {
 	}
 
 	@Override
-	public void cardChosen(Card.Rank selected) {
+	public void cardChosen(Card selected) {
 		
 	}
 

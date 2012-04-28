@@ -1,14 +1,13 @@
 package kvj.shithead.backend;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 public abstract class Game {
 	private final Deck drawPile;
-	private final List<Card.Rank> discardPile;
+	private final List<Card> discardPile;
 	protected final Player[] players;
 	protected final Set<Integer> remainingPlayers;
 	protected int currentPlayer;
@@ -17,7 +16,7 @@ public abstract class Game {
 
 	public Game(int playerCount) {
 		drawPile = new Deck();
-		discardPile = new ArrayList<Card.Rank>(52);
+		discardPile = new ArrayList<Card>(52);
 		remainingPlayers = new TreeSet<Integer>();
 		players = new Player[playerCount];
 		connected = new ArrayList<Client>();
@@ -27,11 +26,11 @@ public abstract class Game {
 		drawPile.populate();
 	}
 
-	public void setDeck(List<Card.Rank> cards) {
+	public void setDeck(List<Card> cards) {
 		drawPile.addCards(cards);
 	}
 
-	public List<Card.Rank> getDeckCards() {
+	public List<Card> getDeckCards() {
 		return drawPile.getList();
 	}
 
@@ -44,7 +43,7 @@ public abstract class Game {
 				players[j].getHand().add(draw());
 
 		for (int i = 0; i < players.length; i++)
-			Collections.sort(players[i].getHand());
+			players[i].sortHand();
 	}
 
 	public Player getPlayer(int playerId) {
@@ -71,21 +70,23 @@ public abstract class Game {
 		return connected;
 	}
 
-	private Card.Rank getLowestCard(Player p) {
-		Card.Rank lowest = null;
-		for (Card.Rank card : p.getHand())
-			if (card != Card.Rank.TWO && card != Card.Rank.TEN && (lowest == null || card.compareTo(lowest) < 0))
+	private Card getLowestCard(Player p) {
+		Card lowest = null;
+		for (Card card : p.getHand()) {
+			Card.Rank rank = card.getRank();
+			if (rank != Card.Rank.TWO && rank != Card.Rank.TEN && (lowest == null || rank.compareTo(lowest.getRank()) < 0))
 				lowest = card;
+		}
 		return lowest;
 	}
 
 	protected void findStartingPlayer() {
 		currentPlayer = 0;
-		Card.Rank lowestCard = null;
+		Card lowestCard = null;
 
 		for (int i = 0; i < players.length; i++) {
-			Card.Rank playerLowest = getLowestCard(players[i]);
-			if (playerLowest != null && (lowestCard == null || playerLowest.compareTo(lowestCard) < 0)) {
+			Card playerLowest = getLowestCard(players[i]);
+			if (playerLowest != null && (lowestCard == null || playerLowest.getRank().compareTo(lowestCard.getRank()) < 0)) {
 				lowestCard = playerLowest;
 				currentPlayer = i;
 			}
@@ -94,29 +95,30 @@ public abstract class Game {
 		players[currentPlayer].getHand().remove(lowestCard);
 		addToDiscardPile(lowestCard);
 		players[currentPlayer].getHand().add(draw());
-		Collections.sort(players[currentPlayer].getHand());
+		players[currentPlayer].sortHand();
 	}
 
 	public abstract void run();
 
-	public boolean isMoveLegal(Card.Rank attempt) {
+	public boolean isMoveLegal(Card attempt) {
 		if (discardPile.isEmpty())
 			return true;
-		Card.Rank topCard = discardPile.get(discardPile.size() - 1);
-		if (attempt.compareTo(topCard) >= 0)
+		Card.Rank attemptRank = attempt.getRank();
+		Card.Rank topCardRank = discardPile.get(discardPile.size() - 1).getRank();
+		if (attemptRank.compareTo(topCardRank) >= 0)
 			return true;
-		if (attempt == Card.Rank.TWO || attempt == Card.Rank.TEN || topCard == Card.Rank.TEN)
+		if (attemptRank == Card.Rank.TWO || attemptRank == Card.Rank.TEN || topCardRank == Card.Rank.TEN)
 			return true;
 		return false;
 	}
 
 	public int getSameRankCount() {
 		int count = 0;
-		Card.Rank lastCard = null;
+		Card.Rank lastCardRank = null;
 		for (int i = discardPile.size() - 1; i >= 0; i--) {
-			if (lastCard == null)
-				lastCard = discardPile.get(i);
-			if (lastCard == discardPile.get(i))
+			if (lastCardRank == null)
+				lastCardRank = discardPile.get(i).getRank();
+			if (lastCardRank == discardPile.get(i).getRank())
 				count++;
 			else
 				break;
@@ -124,17 +126,17 @@ public abstract class Game {
 		return count;
 	}
 
-	public Card.Rank getTopCard() {
+	public Card.Rank getTopCardRank() {
 		if (discardPile.isEmpty())
 			return null;
-		return discardPile.get(discardPile.size() - 1);
+		return discardPile.get(discardPile.size() - 1).getRank();
 	}
 
-	public void addToDiscardPile(Card.Rank card) {
+	public void addToDiscardPile(Card card) {
 		discardPile.add(card);
 	}
 
-	public void transferDiscardPile(List<Card.Rank> newLocation) {
+	public void transferDiscardPile(List<Card> newLocation) {
 		if (newLocation != null)
 			newLocation.addAll(discardPile);
 		discardPile.clear();
@@ -148,7 +150,7 @@ public abstract class Game {
 		return !drawPile.isEmpty();
 	}
 
-	public Card.Rank draw() {
+	public Card draw() {
 		return drawPile.pop();
 	}
 

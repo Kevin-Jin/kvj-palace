@@ -7,7 +7,7 @@ public abstract class BroadcastAdapter implements PlayerAdapter {
 	protected abstract void broadcast(byte[] message);
 
 	@Override
-	public void cardChosen(Card.Rank selected) {
+	public void cardChosen(Card selected) {
 		if (selected != null)
 			broadcast(PacketMaker.selectCard(selected));
 	}

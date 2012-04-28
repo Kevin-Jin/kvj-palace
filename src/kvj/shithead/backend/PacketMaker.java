@@ -10,18 +10,18 @@ public class PacketMaker {
 		END_TURN = 0x04
 	;
 
-	public static byte[] serializedDeck(List<Card.Rank> cards) {
-		byte[] message = new byte[cards.size() + 1];
+	public static byte[] serializedDeck(List<Card> cards) {
+		byte[] message = new byte[1 + cards.size()];
 		assert message.length == 53;
 		int i = 0;
 		message[i++] = PacketMaker.DECK;
-		for (Card.Rank card : cards)
-			message[i++] = (byte) card.ordinal();
+		for (Card card : cards)
+			message[i++] = card.serialize();
 		return message;
 	}
 
-	public static byte[] selectCard(Card.Rank selected) {
-		return new byte[] { SELECT_CARD, (byte) selected.ordinal() };
+	public static byte[] selectCard(Card selected) {
+		return new byte[] { SELECT_CARD, selected.serialize() };
 	}
 
 	public static byte[] endTurn() {

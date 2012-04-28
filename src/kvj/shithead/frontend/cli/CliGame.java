@@ -44,10 +44,10 @@ public class CliGame extends Game {
 	private void printSummary() {
 		for (Integer pId : remainingPlayers) {
 			int i = pId.intValue();
-			System.out.println("Player " + (i + 1) + " has " + players[i].getFaceUp() + " as face up cards. (S)he has " + players[i].getHand().size() + " cards in his/her hand and " + players[i].getFaceDown().size() + " face down cards.");
+			System.out.println("Player " + (i + 1) + " has " + CliGameUtil.listRanks(players[i].getFaceUp()) + " as face up cards. (S)he has " + players[i].getHand().size() + " cards in his/her hand and " + players[i].getFaceDown().size() + " face down cards.");
 		}
 		if (discardPileSize() != 0)
-			System.out.print("Last card(s) played is/are " + getSameRankCount() + " of " + getTopCard() + ". The discard pile has " + discardPileSize() + " card(s) total. ");
+			System.out.print("Last card(s) played is/are " + getSameRankCount() + " of " + getTopCardRank() + ". The discard pile has " + discardPileSize() + " card(s) total. ");
 		else
 			System.out.print("The discard pile is empty. ");
 		if (canDraw())
@@ -69,7 +69,7 @@ public class CliGame extends Game {
 		}
 
 		findStartingPlayer();
-		System.out.println("Player " + (currentPlayer + 1) + " started the game with a " + getTopCard() + ".");
+		System.out.println("Player " + (currentPlayer + 1) + " started the game with a " + getTopCardRank() + ".");
 
 		for (currentPlayer = (currentPlayer + 1) % players.length; remainingPlayers.size() > 1; currentPlayer = (currentPlayer + 1) % players.length) {
 			if (remainingPlayers.contains(Integer.valueOf(currentPlayer))) {

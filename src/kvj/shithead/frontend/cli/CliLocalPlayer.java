@@ -1,5 +1,6 @@
 package kvj.shithead.frontend.cli;
 
+import java.util.List;
 import java.util.Scanner;
 
 import kvj.shithead.backend.Card;
@@ -35,10 +36,10 @@ public class CliLocalPlayer extends Player {
 	}
 
 	@Override
-	public Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
-		Card.Rank selection;
+	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
+		Card selection;
 		if (sameRank) {
-			System.out.print("You have another " + state.selection + ". Would you like to put it down? (y/n): ");
+			System.out.print("You have another " + state.selection.getRank() + ". Would you like to put it down? (y/n): ");
 			String yesNo = scan.nextLine();
 			while (!yesNo.equalsIgnoreCase("Y") && !yesNo.equalsIgnoreCase("YES") && !yesNo.equalsIgnoreCase("N") && !yesNo.equalsIgnoreCase("NO")) {
 				System.out.print("Please type Y (yes) or N (no): ");
@@ -47,19 +48,19 @@ public class CliLocalPlayer extends Player {
 			if (yesNo.equalsIgnoreCase("N") || yesNo.equalsIgnoreCase("NO"))
 				selection = null;
 			else
-				selection = state.selection;
+				selection = getCardOfAnySuit(state.currentPlayable, state.selection.getRank());
 		} else if (!state.blind) {
 			System.out.print(selectText);
-			selection = Card.Rank.getRankByText(scan.nextLine());
+			Card.Rank selectionRank = Card.Rank.getRankByText(scan.nextLine());
 			boolean notACard = false, notInHand = false, notLegal = false;
-			while ((notACard = (selection == null)) || (notInHand = !state.currentPlayable.contains(selection)) || (notLegal = checkDiscardPile && !state.g.isMoveLegal(selection))) {
+			while ((notACard = (selectionRank == null)) || (notInHand = (selection = getCardOfAnySuit(state.currentPlayable, selectionRank)) == null) || (notLegal = checkDiscardPile && !state.g.isMoveLegal(selection))) {
 				if (notACard)
 					System.out.print("Your selection is not a valid card. Try again: ");
 				else if (notInHand)
-					System.out.print("You do not have a " + selection + " in your hand. Try again: ");
+					System.out.print("You do not have a " + selectionRank + " in your hand. Try again: ");
 				else if (notLegal)
-					System.out.print("You may not put a " + selection + " on top of a " + state.g.getTopCard() + ". Try again: ");
-				selection = Card.Rank.getRankByText(scan.nextLine());
+					System.out.print("You may not put a " + selectionRank + " on top of a " + state.g.getTopCardRank() + ". Try again: ");
+				selectionRank = Card.Rank.getRankByText(scan.nextLine());
 			}
 		} else {
 			System.out.print("Choose a number from 1 to " + state.currentPlayable.size() + " (inclusive): ");
@@ -85,7 +86,7 @@ public class CliLocalPlayer extends Player {
 			System.out.println();
 		}
 
-		System.out.println("You may choose any three of these cards to place as your face up cards: " + getHand() + ".");
+		System.out.println("You may choose any three of these cards to place as your face up cards: " + CliGameUtil.listRanks(getHand()) + ".");
 		TurnContext state = super.chooseFaceUp(g);
 
 		if (clearScreen) {
@@ -102,7 +103,7 @@ public class CliLocalPlayer extends Player {
 	@Override
 	protected void switchToHand(TurnContext state) {
 		super.switchToHand(state);
-		System.out.println("Your hand: " + state.currentPlayable);
+		System.out.println("Your hand: " + CliGameUtil.listRanks(state.currentPlayable));
 	}
 
 	@Override
@@ -110,7 +111,7 @@ public class CliLocalPlayer extends Player {
 		if (state.currentPlayable == getHand())
 			System.out.print("You have exhausted your hand. ");
 		super.switchToFaceUp(state);
-		System.out.println("Your face up cards: " + state.currentPlayable);
+		System.out.println("Your face up cards: " + CliGameUtil.listRanks(state.currentPlayable));
 	}
 
 	@Override
@@ -155,7 +156,7 @@ public class CliLocalPlayer extends Player {
 	@Override
 	protected void cardsPickedUp(TurnContext state) {
 		if (!state.pickedUp.isEmpty())
-			System.out.println("You picked up " + state.pickedUp + ".");
+			System.out.println("You picked up " + CliGameUtil.listRanks(state.pickedUp) + ".");
 		else
 			System.out.println("You did not pick up any cards.");
 	}
@@ -192,5 +193,14 @@ public class CliLocalPlayer extends Player {
 		}
 
 		return state;
+	}
+
+	private static Card getCardOfAnySuit(List<Card> hand, Card.Rank rank) {
+		if (rank == null)
+			return null;
+		for (Card card : hand)
+			if (card.getRank() == rank)
+				return card;
+		return null;
 	}
 }

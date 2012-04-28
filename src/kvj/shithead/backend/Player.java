@@ -2,6 +2,7 @@ package kvj.shithead.backend;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import kvj.shithead.backend.adapter.PlayerAdapter;
@@ -21,16 +22,16 @@ import kvj.shithead.backend.adapter.PlayerAdapter;
 // his hand (including the ones he picked up) before play moves on, as long as
 // the card combination is legal.
 public abstract class Player {
-	private final List<Card.Rank> faceDown;
-	private final List<Card.Rank> faceUp;
-	private final List<Card.Rank> hand;
+	private final List<Card> faceDown;
+	private final List<Card> faceUp;
+	private final List<Card> hand;
 	private final int playerId;
 	protected final PlayerAdapter adapter;
 
 	public Player(int playerId, PlayerAdapter adapter) {
-		faceDown = new ArrayList<Card.Rank>();
-		faceUp = new ArrayList<Card.Rank>();
-		hand = new ArrayList<Card.Rank>();
+		faceDown = new ArrayList<Card>();
+		faceUp = new ArrayList<Card>();
+		hand = new ArrayList<Card>();
 		this.playerId = playerId;
 		this.adapter = adapter;
 	}
@@ -39,19 +40,28 @@ public abstract class Player {
 		return playerId;
 	}
 
-	public List<Card.Rank> getFaceUp() {
+	public List<Card> getFaceUp() {
 		return faceUp;
 	}
 
-	public List<Card.Rank> getFaceDown() {
+	public List<Card> getFaceDown() {
 		return faceDown;
 	}
 
-	public List<Card.Rank> getHand() {
+	public List<Card> getHand() {
 		return hand;
 	}
 
-	public abstract Card.Rank chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
+	public void sortHand() {
+		Collections.sort(hand, new Comparator<Card>() {
+			@Override
+			public int compare(Card card1, Card card2) {
+				return card1.getRank().compareTo(card2.getRank());
+			}
+		});
+	}
+
+	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
 
 	protected void moveFromHandToFaceUp(TurnContext state) {
 		getHand().remove(state.selection);
@@ -115,7 +125,7 @@ public abstract class Player {
 	}
 
 	private boolean hasValidMove(TurnContext state) {
-		for (Card.Rank c : state.currentPlayable)
+		for (Card c : state.currentPlayable)
 			if (state.g.isMoveLegal(c))
 				return true;
 		return false;
@@ -143,7 +153,7 @@ public abstract class Player {
 		playCard(state);
 
 		boolean cleared = false, wildcard = false, sameRank = false;
-		while (!state.won && ((cleared = (state.g.getTopCard() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCard() == Card.Rank.TEN)) || (sameRank = !state.blind && state.currentPlayable.contains(state.selection))) && state.selection != null) {
+		while (!state.won && ((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && containsRank(state.currentPlayable, state.selection.getRank()))) && state.selection != null) {
 			if (cleared)
 				clearDiscardPile(state);
 			if (wildcard)
@@ -188,7 +198,7 @@ public abstract class Player {
 
 		if (!state.pickedUp.isEmpty()) {
 			getHand().addAll(state.pickedUp);
-			Collections.sort(getHand());
+			sortHand();
 			cardsPickedUp(state);
 			if (state.pickedUpDiscardPile) {
 				switchToHand(state);
@@ -201,5 +211,12 @@ public abstract class Player {
 		}
 
 		return state;
+	}
+
+	private static boolean containsRank(List<Card> hand, Card.Rank rank) {
+		for (Card card : hand)
+			if (card.getRank() == rank)
+				return true;
+		return false;
 	}
 }

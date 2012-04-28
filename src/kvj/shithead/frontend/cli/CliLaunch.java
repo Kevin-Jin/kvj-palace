@@ -99,9 +99,9 @@ public class CliLaunch {
 				int offset = 0;
 				while (offset < message.length)
 					offset += client.socket().getInputStream().read(message, offset, message.length - offset);
-				List<Card.Rank> cards = new ArrayList<Card.Rank>(52);
+				List<Card> cards = new ArrayList<Card>(52);
 				for (i = 0; i < 52; i++)
-					cards.add(Card.Rank.values()[message[i]]);
+					cards.add(Card.deserialize(message[i]));
 				g.setDeck(cards);
 			}
 			g.run();

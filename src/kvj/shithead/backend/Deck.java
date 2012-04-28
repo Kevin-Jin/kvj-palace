@@ -5,24 +5,24 @@ import java.util.Collections;
 import java.util.List;
 
 public class Deck {
-	private final List<Card.Rank> cards;
+	private final List<Card> cards;
 
 	public Deck() {
-		cards = new ArrayList<Card.Rank>();
+		cards = new ArrayList<Card>();
 	}
 
 	public void populate() {
-		for (Card.Rank c : Card.Rank.values())
-			for (int i = 0; i < 4; i++)
-				cards.add(c);
+		for (Card.Suit s : Card.Suit.values())
+			for (Card.Rank r : Card.Rank.values())
+				cards.add(Card.valueOf(s, r));
 		Collections.shuffle(cards);
 	}
 
-	public void addCards(List<Card.Rank> cards) {
+	public void addCards(List<Card> cards) {
 		this.cards.addAll(cards);
 	}
 
-	public Card.Rank pop() {
+	public Card pop() {
 		return cards.remove(0);
 	}
 
@@ -34,7 +34,7 @@ public class Deck {
 		return cards.size();
 	}
 
-	public List<Card.Rank> getList() {
+	public List<Card> getList() {
 		return cards;
 	}
 }
