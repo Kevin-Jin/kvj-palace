@@ -1,8 +1,6 @@
 package kvj.shithead.frontend.gui;
 
-import java.awt.Point;
 import java.util.List;
-import java.util.Map;
 
 import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
@@ -12,10 +10,6 @@ import kvj.shithead.backend.adapter.NoOperationAdapter;
 
 public class GuiGame extends Game {
 	private int localPlayer;
-	//when card is close enough to discard pile, move card
-	//from current hand to discard pile and use draw with 
-	//offset from discard pile instead of from hand
-	private Map<Card, Point> discardPileCardOffsets;
 
 	public GuiGame(int playerCount) {
 		super(playerCount);

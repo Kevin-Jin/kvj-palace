@@ -1,7 +1,6 @@
 package kvj.shithead.frontend.gui;
 
 import kvj.shithead.backend.Card;
-import kvj.shithead.backend.Player;
 import kvj.shithead.backend.TurnContext;
 import kvj.shithead.backend.adapter.PlayerAdapter;
 

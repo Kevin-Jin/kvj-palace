@@ -88,11 +88,16 @@ public class GuiLaunch extends JApplet {
 			@Override
 			public void run() {
 				final ShitheadPanel panel = new ShitheadPanel(new GuiGame(5));
-				Timer refresher = new Timer(1000 / 60, new ActionListener() {
+				//~120 fps so it looks smooth even without vsync
+				Timer refresher = new Timer(500 / 60, new ActionListener() {
+					private long lastUpdate = System.currentTimeMillis();
+
 					@Override
 					public void actionPerformed(ActionEvent e) {
-						panel.updateState();
+						long now = System.currentTimeMillis();
+						panel.updateState((now - lastUpdate) / 1000d);
 						panel.repaint();
+						lastUpdate = now;
 					}
 				});
 
