@@ -8,6 +8,7 @@ import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -24,7 +25,7 @@ public class ShitheadPanel extends JComponent {
 	private static final int TABLE_DIAMETER = 800;
 
 	private List<CardEntity> cards;
-	private Set<CardEntity> drawOver;
+	private Set<CardEntity> tempDrawOver;
 	private CardEntity dragged;
 	private GuiGame model;
 	private ShitheadController input;
@@ -41,7 +42,7 @@ public class ShitheadPanel extends JComponent {
 		cardImages = new ImageCache();
 		cardImages.populate();
 		cards = new ArrayList<CardEntity>();
-		drawOver = new LinkedHashSet<CardEntity>();
+		tempDrawOver = new LinkedHashSet<CardEntity>();
 
 		for (int i = 0; i < model.getPlayerCount(); i++)
 			init((GuiPlayer) model.getPlayer(i));
@@ -101,9 +102,11 @@ public class ShitheadPanel extends JComponent {
 		boolean findCardToDrag = false;
 		if (dragged != null) {
 			if (!input.mouseDown()) {
-				//TODO: move dragged back to original location,
-				//before removing it from drawOver
-				drawOver.remove(dragged);
+				//if input.getCursor() in bounds of discard pile
+					//dragged.mark(input.getCursor(), 0, 1);
+					//cards.remove(dragged);
+					//cards.add(dragged);
+				dragged.reset();
 				dragged = null;
 			} else {
 				dragged.manualMove(input.getCursor());
@@ -112,14 +115,18 @@ public class ShitheadPanel extends JComponent {
 			if (input.mouseDown())
 				findCardToDrag = true;
 		}
+		for (Iterator<CardEntity> iter = tempDrawOver.iterator(); iter.hasNext(); )
+			if (iter.next().stopTempDrawingOver())
+				iter.remove();
 		//go in reverse so card that was painted last
 		//will be the first candidate for manipulation
 		for (ListIterator<CardEntity> iter = cards.listIterator(cards.size()); iter.hasPrevious(); ) {
 			CardEntity card = iter.previous();
 			card.update(tDelta);
 			if (findCardToDrag && card.isPointInCard(input.getCursor(), cardImages.getCardWidth(), cardImages.getCardHeight())) {
+				card.mark();
 				dragged = card;
-				drawOver.add(dragged);
+				tempDrawOver.add(dragged);
 				findCardToDrag = false;
 			}
 		}
@@ -150,9 +157,9 @@ public class ShitheadPanel extends JComponent {
 		g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		g.drawOval(WIDTH / 2 - TABLE_DIAMETER / 2, HEIGHT / 2 - TABLE_DIAMETER / 2, TABLE_DIAMETER, TABLE_DIAMETER);
 		for (CardEntity card : cards)
-			if (!drawOver.contains(card))
+			if (!tempDrawOver.contains(card))
 				draw(card, g2d);
-		for (CardEntity card : drawOver)
+		for (CardEntity card : tempDrawOver)
 			draw(card, g2d);
 	}
 }

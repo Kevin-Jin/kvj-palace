@@ -14,10 +14,11 @@ public class CardEntity {
 	private final Card value;
 	private boolean show;
 
-	private final Point2D initPos, finalPos, curPos;
-	private double initRot, finalRot, curRot;
-	private double initScale, finalScale, curScale;
+	private final Point2D initPos, finalPos, curPos, markedPos;
+	private double initRot, finalRot, curRot, markedRot;
+	private double initScale, finalScale, curScale, markedScale;
 	private double vX, vY;
+	private boolean stopped, atHome;
 
 	public CardEntity(Card value, boolean show, Point2D pos, double rotation) {
 		this.value = value;
@@ -27,6 +28,8 @@ public class CardEntity {
 		finalPos = new Point2D.Double();
 		curPos = new Point2D.Double();
 
+		markedPos = new Point2D.Double();
+
 		curPos.setLocation(pos);
 		curRot = rotation;
 		curScale = 1;
@@ -34,8 +37,10 @@ public class CardEntity {
 		stop();
 	}
 
-	public void autoMove(double rot, Point position, double size) {
+	public void autoMove(double rot, Point2D position, double size) {
 		stop();
+		stopped = false;
+		atHome = false;
 
 		finalPos.setLocation(position);
 		finalRot = rot;
@@ -46,43 +51,52 @@ public class CardEntity {
 		vY = VELOCITY * Math.sin(theta);
 	}
 
-	public void manualMove(Point position) {
+	public void manualMove(Point2D position) {
 		curPos.setLocation(position);
 		stop();
+		atHome = false;
 	}
 
-	public void stop() {
+	private void stop() {
 		finalPos.setLocation(curPos);
 		initPos.setLocation(curPos);
 		initRot = finalRot = curRot;
 		initScale = finalScale = curScale;
 		vX = vY = 0;
+		stopped = true;
+		atHome = true;
+	}
+
+	public boolean stopTempDrawingOver() {
+		return atHome;
 	}
 
 	public void update(double tDelta) {
-		double xUnclamped = curPos.getX() + tDelta * vX;
-		double yUnclamped = curPos.getY() + tDelta * vY;
-		curPos.setLocation(
-				vX > 0 ?
-					Math.min(xUnclamped, finalPos.getX())
-				:
-					Math.max(xUnclamped, finalPos.getX()),
-				vY > 0 ?
-					Math.min(yUnclamped, finalPos.getY())
-				:
-					Math.max(yUnclamped, finalPos.getY())
-		);
-		double progress;
-		if (finalPos.equals(initPos)) {
-			//assert curPos.equals(initPos);
-			progress = 1;
-		} else {
-			double curDistance = curPos.distance(initPos);
-			double finalDistance = finalPos.distance(initPos);
-			progress = curDistance / finalDistance;
+		if (!stopped) {
+			double xUnclamped = curPos.getX() + tDelta * vX;
+			double yUnclamped = curPos.getY() + tDelta * vY;
+			curPos.setLocation(
+					vX > 0 ?
+						Math.min(xUnclamped, finalPos.getX())
+					:
+						Math.max(xUnclamped, finalPos.getX()),
+					vY > 0 ?
+						Math.min(yUnclamped, finalPos.getY())
+					:
+						Math.max(yUnclamped, finalPos.getY())
+			);
+			if (curPos.equals(finalPos)) {
+				curRot = finalRot;
+				curScale = finalScale;
+				stop();
+			} else {
+				double curDistance = curPos.distance(initPos);
+				double finalDistance = finalPos.distance(initPos);
+				double progress = curDistance / finalDistance;
+				curRot = (finalRot - initRot) * progress + initRot;
+				curScale = (finalScale - initScale) * progress + initScale;
+			}
 		}
-		curRot = (finalRot - initRot) * progress + initRot;
-		curScale = (finalScale - initScale) * progress + initScale;
 	}
 
 	public Card getValue() {
@@ -128,5 +142,23 @@ public class CardEntity {
 		} catch (NoninvertibleTransformException e) {
 			return false;
 		}
+	}
+
+	public void mark() {
+		if (atHome) {
+			markedPos.setLocation(curPos);
+			markedRot = curRot;
+			markedScale = curScale;
+		}
+	}
+
+	public void mark(Point2D pos, double rot, double scale) {
+		markedPos.setLocation(pos);
+		markedRot = rot;
+		markedScale = scale;
+	}
+
+	public void reset() {
+		autoMove(markedRot, markedPos, markedScale);
 	}
 }
