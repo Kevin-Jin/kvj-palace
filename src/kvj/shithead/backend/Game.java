@@ -7,7 +7,7 @@ import java.util.TreeSet;
 
 public abstract class Game {
 	private final Deck drawPile;
-	private final List<Card> discardPile;
+	protected final List<Card> discardPile;
 	protected final Player[] players;
 	protected final Set<Integer> remainingPlayers;
 	protected int currentPlayer;
