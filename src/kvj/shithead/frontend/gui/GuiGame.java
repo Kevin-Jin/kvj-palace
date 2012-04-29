@@ -84,4 +84,8 @@ public class GuiGame extends Game {
 	public List<Card> getDiscardPile() {
 		return discardPile;
 	}
+
+	public int getCurrentPlayer() {
+		return currentPlayer;
+	}
 }

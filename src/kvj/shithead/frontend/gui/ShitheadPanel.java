@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
@@ -12,7 +13,9 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.NavigableMap;
 import java.util.Set;
+import java.util.TreeMap;
 
 import javax.swing.JComponent;
 
@@ -30,6 +33,7 @@ public class ShitheadPanel extends JComponent {
 	private GuiGame model;
 	private ShitheadController input;
 	private ImageCache cardImages;
+	private NavigableMap<Integer, MutableRange> handIndices;
 
 	public ShitheadPanel(GuiGame model) {
 		this.model = model;
@@ -43,11 +47,20 @@ public class ShitheadPanel extends JComponent {
 		cardImages.populate();
 		cards = new ArrayList<CardEntity>();
 		tempDrawOver = new LinkedHashSet<CardEntity>();
+		handIndices = new TreeMap<Integer, MutableRange>();
 
 		for (int i = 0; i < model.getPlayerCount(); i++)
 			init((GuiPlayer) model.getPlayer(i));
 		initCenter();
-		cards.get(0).autoMove(4 * Math.PI, new Point(0, 0), 5);
+	}
+
+	private CardEntity make(Card c, double rotation, Point2D playerBoxPosition, boolean show) {
+		AffineTransform t = AffineTransform.getTranslateInstance(WIDTH / 2, HEIGHT / 2);
+		t.concatenate(AffineTransform.getRotateInstance(rotation));
+		Point2D pos = new Point2D.Double();
+		AffineTransform.getTranslateInstance(cardImages.getCardWidth() / 2, cardImages.getCardHeight() / 2).transform(playerBoxPosition, pos);
+		t.transform(pos, pos);
+		return new CardEntity(c, show, pos, rotation);
 	}
 
 	private void init(GuiPlayer p) {
@@ -64,6 +77,8 @@ public class ShitheadPanel extends JComponent {
 		left += CLOSED_HAND_SPACING;
 		for (Card c : p.getFaceUp())
 			cards.add(make(c, rot, new Point(i++ * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER), true));
+
+		handIndices.put(Integer.valueOf(p.getPlayerId()), new MutableRange(cards.size(), p.getHand().size()));
 
 		boolean isLocal = p.getPlayerId() == model.getLocalPlayerNumber();
 		if (p.isThinking()) {
@@ -98,14 +113,39 @@ public class ShitheadPanel extends JComponent {
 			cards.add(make(card, 0, new Point(i++ * CLOSED_HAND_SPACING + left, -cardImages.getCardHeight() / 2), true));
 	}
 
+	private Rectangle getDiscardPileBounds() {
+		//TODO: this needs to share code with initCenter() and make(...)
+		final int CLOSED_HAND_SPACING = 2;
+		int left = -28;
+		return new Rectangle(WIDTH / 2 + left, HEIGHT / 2 - cardImages.getCardHeight() / 2, model.getDiscardPile().size() * CLOSED_HAND_SPACING + cardImages.getCardWidth(), cardImages.getCardHeight());
+	}
+
+	private Point getDiscardPileLocation() {
+		//TODO: this needs to share code with initCenter() and make(...)
+		final int CLOSED_HAND_SPACING = 2;
+		int left = -28;
+		return new Point(WIDTH / 2 + left + model.getDiscardPile().size() * CLOSED_HAND_SPACING + cardImages.getCardWidth() / 2, HEIGHT / 2);
+	}
+
 	public void updateState(double tDelta) {
 		boolean findCardToDrag = false;
 		if (dragged != null) {
 			if (!input.mouseDown()) {
-				//if input.getCursor() in bounds of discard pile
-					//dragged.mark(input.getCursor(), 0, 1);
-					//cards.remove(dragged);
-					//cards.add(dragged);
+				if (getDiscardPileBounds().contains(input.getCursor())) {
+					//assert dragged is from current player's face down, face up, or hand
+					dragged.mark(getDiscardPileLocation(), 0, 1);
+					//permanantly paint dragged last so it's on top of the discard pile
+					cards.remove(dragged);
+					cards.add(dragged);
+					boolean fromHand = model.getPlayer(model.getCurrentPlayer()).getHand().contains(dragged.getValue());
+					if (fromHand)
+						handIndices.get(Integer.valueOf(model.getCurrentPlayer())).decrementLength();
+					//if we take dragged from our face up or face down, also decrement
+					//our own hand index
+					for (MutableRange i : handIndices.tailMap(Integer.valueOf(model.getCurrentPlayer()), !fromHand).values())
+						i.decrementStart();
+					//TODO: update model/player
+				}
 				dragged.reset();
 				dragged = null;
 			} else {
@@ -132,18 +172,52 @@ public class ShitheadPanel extends JComponent {
 		}
 	}
 
+	//TODO: have GuiPlayer.cardsPickedUp(TurnContext cx) call this if !cx.pickedUp.isEmpty()
+	public void playerPickedUpCards(GuiPlayer p) {
+		MutableRange handRange = handIndices.get(Integer.valueOf(p.getPlayerId()));
+		List<Card> hand = p.getHand();
+		List<CardEntity> moved = new ArrayList<CardEntity>(hand.size());
+		//all cards in updated hand should have come from old hand and draw deck or discard pile
+		//skip all the cards before our hand, and cards from draw deck and discard pile should
+		//come after all hands
+		for (ListIterator<CardEntity> iter = cards.listIterator(handRange.getStart()); iter.hasNext() && moved.size() < hand.size(); ) {
+			//assert ent is in deck or discard pile, so we don't need to update handIndices
+			CardEntity ent = iter.next();
+			if (hand.contains(ent.getValue())) {
+				iter.remove();
+				moved.add(ent);
+			}
+		}
+		assert moved.size() == hand.size();
+		cards.addAll(handRange.getStart(), moved);
+		for (MutableRange i : handIndices.tailMap(Integer.valueOf(p.getPlayerId()), false).values())
+			i.addToStart(moved.size() - handRange.getLength());
+		handRange.setLength(moved.size());
+
+		//TODO: this needs to share code with init(GuiPlayer p)
+		double rot = Math.PI * 2 * (p.getPlayerId() - model.getLocalPlayerNumber()) / model.getPlayerCount();
+		final int OPEN_HAND_SPACING = 2;
+		final int CLOSED_HAND_SPACING = 4;
+		//closest we can get without 5 players colliding
+		final int DISTANCE_FROM_CENTER = 160;
+		int i;
+		int left;
+		if (p.isThinking()) {
+			i = 0;
+			left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * p.getHand().size() / 2;
+			for (i = 0; i < handRange.getLength(); i++)
+				cards.get(handRange.getStart() + i).autoMove(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1), 1);
+		} else {
+			i = 0;
+			left = -(cardImages.getCardWidth() + CLOSED_HAND_SPACING * (p.getHand().size() - 1)) / 2;
+			for (i = 0; i < handRange.getLength(); i++)
+				cards.get(handRange.getStart() + i).autoMove(rot, new Point(i * CLOSED_HAND_SPACING + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1), 1);
+		}
+	}
+
 	@Override
 	public Dimension getPreferredSize() {
 		return new Dimension(WIDTH, HEIGHT);
-	}
-
-	private CardEntity make(Card c, double rotation, Point2D playerBoxPosition, boolean show) {
-		AffineTransform t = AffineTransform.getTranslateInstance(WIDTH / 2, HEIGHT / 2);
-		t.concatenate(AffineTransform.getRotateInstance(rotation));
-		Point2D pos = new Point2D.Double();
-		AffineTransform.getTranslateInstance(cardImages.getCardWidth() / 2, cardImages.getCardHeight() / 2).transform(playerBoxPosition, pos);
-		t.transform(pos, pos);
-		return new CardEntity(c, show, pos, rotation);
 	}
 
 	private void draw(CardEntity card, Graphics2D g2d) {
