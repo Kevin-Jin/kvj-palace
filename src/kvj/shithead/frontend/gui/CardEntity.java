@@ -51,6 +51,10 @@ public class CardEntity {
 		vY = VELOCITY * Math.sin(theta);
 	}
 
+	public void setShow(boolean show) {
+		this.show = show;
+	}
+
 	public void manualMove(Point2D position) {
 		curPos.setLocation(position);
 		stop();

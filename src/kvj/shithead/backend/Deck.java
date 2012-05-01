@@ -23,7 +23,7 @@ public class Deck {
 	}
 
 	public Card pop() {
-		return cards.remove(0);
+		return cards.remove(cards.size() - 1);
 	}
 
 	public boolean isEmpty() {

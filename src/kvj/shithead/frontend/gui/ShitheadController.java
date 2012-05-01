@@ -6,12 +6,10 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
 public class ShitheadController implements MouseListener, MouseMotionListener {
-	private GuiGame model;
 	private Point pt;
 	private boolean drag;
 
-	public ShitheadController(GuiGame model) {
-		this.model = model;
+	public ShitheadController() {
 		pt = new Point(0, 0);
 	}
 

@@ -5,26 +5,18 @@ import java.util.List;
 import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
 import kvj.shithead.backend.Game;
+import kvj.shithead.backend.Player;
 import kvj.shithead.backend.TurnContext;
+import kvj.shithead.backend.adapter.ClientAdapter;
+import kvj.shithead.backend.adapter.HostAdapter;
 import kvj.shithead.backend.adapter.NoOperationAdapter;
 
 public class GuiGame extends Game {
 	private int localPlayer;
+	private ShitheadPanel view;
 
 	public GuiGame(int playerCount) {
 		super(playerCount);
-		players[0] = new GuiLocalPlayer(0, NoOperationAdapter.getInstance());
-		for (int i = 1; i < playerCount; i++)
-			players[i] = new GuiRemotePlayer(i, NoOperationAdapter.getInstance());
-		populateDeck();
-		deal();
-		for (int i = 0; i < playerCount; i++) {
-			players[i].getFaceUp().add(players[i].getHand().remove(0));
-			players[i].getFaceUp().add(players[i].getHand().remove(0));
-			players[i].getFaceUp().add(players[i].getHand().remove(0));
-		}
-		addToDiscardPile(draw());
-		addToDiscardPile(draw());
 	}
 
 	public int getPlayerCount() {
@@ -33,34 +25,35 @@ public class GuiGame extends Game {
 
 	@Override
 	public void constructLocalPlayers(int start, int amount, Client client, boolean host) {
-		/*for (int i = 0; i < amount; i++) {
+		for (int i = 0; i < amount; i++) {
 			if (host)
-				players[start + i] = new CliLocalPlayer(start + i, new HostAdapter(client, connected), scan, splitScreen);
+				players[start + i] = new GuiLocalPlayer(start + i, new HostAdapter(client, connected), this);
 			else
-				players[start + i] = new CliLocalPlayer(start + i, new ClientAdapter(client), scan, splitScreen);
+				players[start + i] = new GuiLocalPlayer(start + i, new ClientAdapter(client), this);
 			remainingPlayers.add(Integer.valueOf(start + i));
 			connectedCount++;
-		}*/
+		}
 	}
 
 	@Override
 	public void constructRemotePlayer(int playerId, Client client, boolean host) {
-		/*if (host)
-			players[playerId] = new CliRemotePlayer(playerId, new HostAdapter(client, connected), client);
+		if (host)
+			players[playerId] = new GuiRemotePlayer(playerId, new HostAdapter(client, connected), client, this);
 		else
-			players[playerId] = new CliRemotePlayer(playerId, NoOperationAdapter.getInstance(), client);
+			players[playerId] = new GuiRemotePlayer(playerId, NoOperationAdapter.getInstance(), client, this);
 		remainingPlayers.add(Integer.valueOf(playerId));
-		connectedCount++;*/
+		connectedCount++;
 	}
 
 	@Override
 	public void run() {
+		view.makeDrawDeckEntities();
 		deal();
-		System.out.println();
+		for (Player p : players)
+			view.dealtCards(p);
 
-		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++) {
-			TurnContext cx = players[currentPlayer].chooseFaceUp(this);
-		}
+		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++)
+			players[currentPlayer].chooseFaceUp(this);
 
 		findStartingPlayer();
 
@@ -87,5 +80,17 @@ public class GuiGame extends Game {
 
 	public int getCurrentPlayer() {
 		return currentPlayer;
+	}
+
+	public TurnContext getCurrentTurnContext() {
+		return null;
+	}
+
+	public void setView(ShitheadPanel panel) {
+		view = panel;
+	}
+
+	public ShitheadPanel getView() {
+		return view;
 	}
 }
