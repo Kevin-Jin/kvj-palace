@@ -164,7 +164,7 @@ public abstract class Player {
 		playCard(state);
 
 		boolean cleared = false, wildcard = false, sameRank = false;
-		while (!state.won && ((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && state.selection != null && containsRank(state.currentPlayable, state.selection.getRank()))) && state.selection != null) {
+		while (((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && state.selection != null && containsRank(state.currentPlayable, state.selection.getRank()))) && !state.won && state.selection != null) {
 			if (cleared)
 				clearDiscardPile(state);
 			if (wildcard)
@@ -218,8 +218,6 @@ public abstract class Player {
 				state.selection = chooseCard(state, "Choose first card of new discard pile: ", false, false);
 				finishTurn(state);
 			}
-		} else {
-			cardsPickedUp(state);
 		}
 
 		currentCx = null;

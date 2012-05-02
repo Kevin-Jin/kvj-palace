@@ -141,6 +141,8 @@ public class CliLocalPlayer extends Player {
 		if (state.selection == null) {
 			assert state.g.canDraw() && state.currentPlayable.isEmpty();
 			System.out.println("Since cards can be drawn, you must draw and you cannot put down any more cards.");
+		} else if (state.won) {
+			System.out.println();
 		}
 	}
 
@@ -150,6 +152,8 @@ public class CliLocalPlayer extends Player {
 		if (state.selection == null) {
 			assert state.g.canDraw() && state.currentPlayable.isEmpty();
 			System.out.println("Since cards can be drawn, you must draw and you cannot put down any more cards.");
+		} else if (state.won) {
+			System.out.println();
 		}
 	}
 

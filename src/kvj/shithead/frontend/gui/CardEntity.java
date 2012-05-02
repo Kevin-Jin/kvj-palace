@@ -37,7 +37,7 @@ public class CardEntity {
 		stop();
 	}
 
-	public void autoMove(double rot, Point2D position, double size) {
+	private void autoMove(double rot, Point2D position, double size) {
 		stop();
 		stopped = false;
 		atHome = false;

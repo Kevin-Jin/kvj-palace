@@ -26,7 +26,6 @@ import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Player;
 import kvj.shithead.backend.TurnContext;
 
-//TODO: use mark/reset instead of autoMove if card could be dragged, so cards return to their proper place if accidentally dragged
 //TODO: allow player to end his turn early
 public class ShitheadPanel extends JComponent {
 	private static final long serialVersionUID = -6335150580109791737L;
@@ -185,12 +184,10 @@ public class ShitheadPanel extends JComponent {
 						if (cx.g.isMoveLegal(dragged.getValue())) {
 							//assert dragged is from current player's face down, face up, or hand
 							dragged.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
-							dragged.setShow(true);
 							removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
 							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
 						} else if (cx.blind) {
-							//TODO: if gamble failed, does not return failed card to hand (does not repositionHand either?)
-							dragged.setShow(true);
+							//TODO: if gamble failed, does not return failed card to hand
 							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
 						} else {
 							drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cx.g.getTopCardRank() + ".");
@@ -224,6 +221,7 @@ public class ShitheadPanel extends JComponent {
 							else
 								card.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
 							dragged = card;
+							dragged.setShow(true);
 							tempDrawOver.add(dragged);
 						}
 					}
@@ -284,7 +282,8 @@ public class ShitheadPanel extends JComponent {
 		try {
 			for (i = 0; i < curCardRanges.getFaceDownLength(); i++) {
 				CardEntity c = cards.get(curCardRanges.getFaceDownStart() + i);
-				c.autoMove(rot, transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER)), 1);
+				c.mark(transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER)), rot, 1);
+				c.reset();
 				c.setShow(false);
 			}
 		} finally {
@@ -347,7 +346,8 @@ public class ShitheadPanel extends JComponent {
 			try {
 				for (i = 0; i < curCardRanges.getHandLength(); i++) {
 					CardEntity c = cards.get(curCardRanges.getHandStart() + i);
-					c.autoMove(rot, transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), 1);
+					c.mark(transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
+					c.reset();
 					c.setShow(p.getPlayerId() == model.getLocalPlayerNumber());
 				}
 			} finally {
@@ -360,7 +360,8 @@ public class ShitheadPanel extends JComponent {
 			try {
 				for (i = 0; i < curCardRanges.getHandLength(); i++) {
 					CardEntity c = cards.get(curCardRanges.getHandStart() + i);
-					c.autoMove(rot, transform(rot, new Point(i * CLOSED_HAND_SPACING + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), 1);
+					c.mark(transform(rot, new Point(i * CLOSED_HAND_SPACING + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
+					c.reset();
 					c.setShow(p.getPlayerId() == model.getLocalPlayerNumber());
 				}
 			} finally {
@@ -387,8 +388,13 @@ public class ShitheadPanel extends JComponent {
 				for (ListIterator<CardEntity> iter = cards.listIterator(playerIndices[playerIndices.length - 1].getEndIndexPlusOne()); iter.hasNext(); ) {
 					CardEntity ent = iter.next();
 					//if it's not a draw deck card, it has to be from the old discard pile
-					if (!model.getDeckCards().contains(ent.getValue()))
-						ent.autoMove(4 * Math.PI, new Point(0, 0), 0);
+					if (!model.getDeckCards().contains(ent.getValue())) {
+						//spin it twice just to convey that it's going down,
+						//and have it eventually shrink into nothing as it
+						//approaches the top left corner
+						ent.mark(new Point(0, 0), 4 * Math.PI, 0);
+						ent.reset();
+					}
 				}
 			}
 		} finally {
@@ -427,10 +433,12 @@ public class ShitheadPanel extends JComponent {
 			ent.setShow(true);
 			if (cx.choosingFaceUp) {
 				removeCardFromHandAndPutOnFaceUp(p, ent);
-				ent.autoMove(getRotation(p), getFaceUpCardLocation(p, p.getFaceUp().size() - 1), 1);
+				ent.mark(getFaceUpCardLocation(p, p.getFaceUp().size() - 1), getRotation(p), 1);
+				ent.reset();
 			} else {
 				removeCardFromPlayerAndPutOnDiscardPile(cx, p, ent);
-				ent.autoMove(0, getDiscardPileLocation(model.getDiscardPileSize() - 1), 1);
+				ent.mark(getDiscardPileLocation(model.getDiscardPileSize() - 1), 0, 1);
+				ent.reset();
 			}
 		}
 	}
