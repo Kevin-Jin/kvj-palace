@@ -20,6 +20,7 @@ public class GuiLocalPlayer extends GuiPlayer {
 		try {
 			inputWait.await();
 			inputWait = new CountDownLatch(1);
+			adapter.cardChosen(chosen);
 			return chosen;
 		} catch (InterruptedException e) {
 			e.printStackTrace();

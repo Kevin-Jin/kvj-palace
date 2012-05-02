@@ -56,18 +56,21 @@ public class GuiGame extends Game {
 			players[currentPlayer].chooseFaceUp(this);
 
 		findStartingPlayer();
+		((GuiPlayer) players[currentPlayer]).startedGame();
+		view.remotePlayerPutCard(players[currentPlayer], discardPile.get(discardPile.size() - 1));
+		((GuiPlayer) players[currentPlayer]).putFirstCard();
+		view.playerPickedUpCards(players[currentPlayer]);
 
 		for (currentPlayer = (currentPlayer + 1) % players.length; remainingPlayers.size() > 1; currentPlayer = (currentPlayer + 1) % players.length) {
 			if (remainingPlayers.contains(Integer.valueOf(currentPlayer))) {
 				TurnContext cx = players[currentPlayer].playTurn(this);
-				if (cx.won) {
+				if (cx.won)
 					remainingPlayers.remove(Integer.valueOf(currentPlayer));
-				}
 			}
 		}
 
 		for (Integer pId : remainingPlayers)
-			System.out.println("Player " + (pId.intValue() + 1) + " is the shithead!");
+			view.drawHint("Player " + (pId.intValue() + 1) + " is the shithead!");
 	}
 
 	public int getLocalPlayerNumber() {
@@ -80,10 +83,6 @@ public class GuiGame extends Game {
 
 	public int getCurrentPlayer() {
 		return currentPlayer;
-	}
-
-	public TurnContext getCurrentTurnContext() {
-		return null;
 	}
 
 	public void setView(ShitheadPanel panel) {

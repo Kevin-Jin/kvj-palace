@@ -33,6 +33,12 @@ public class GuiRemotePlayer extends GuiPlayer {
 	}
 
 	@Override
+	protected void moveFromHandToFaceUp(TurnContext state) {
+		super.moveFromHandToFaceUp(state);
+		model.getView().remotePlayerPutCard(this, state.selection);
+	}
+
+	@Override
 	protected void putCard(TurnContext state) {
 		super.putCard(state);
 		model.getView().remotePlayerPutCard(this, state.selection);

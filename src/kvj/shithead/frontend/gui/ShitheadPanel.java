@@ -9,6 +9,8 @@ import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -76,9 +78,41 @@ public class ShitheadPanel extends JComponent {
 	}
 
 	private Point getDiscardPileLocation() {
+		//TODO: share with getDiscardPileBounds
 		final int CLOSED_HAND_SPACING = 2;
 		int left = -28;
 		return new Point(WIDTH / 2 + left + model.getDiscardPile().size() * CLOSED_HAND_SPACING + cardImages.getCardWidth() / 2, HEIGHT / 2);
+	}
+
+	private Rectangle getLocalFaceUpCardBounds(int i) {
+		final int OPEN_HAND_SPACING = 2;
+		final int CLOSED_HAND_SPACING = 4;
+		//closest we can get without 5 players colliding
+		final int DISTANCE_FROM_CENTER = 160;
+		int left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * 3 / 2 + CLOSED_HAND_SPACING;
+		return new Rectangle(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left + WIDTH / 2, DISTANCE_FROM_CENTER + HEIGHT / 2, cardImages.getCardWidth(), cardImages.getCardHeight());
+	}
+
+	private Point2D getFaceUpCardLocation(Player p, int i) {
+		//TODO: share with getLocalFaceUpCardBounds
+		final int OPEN_HAND_SPACING = 2;
+		final int CLOSED_HAND_SPACING = 4;
+		//closest we can get without 5 players colliding
+		final int DISTANCE_FROM_CENTER = 160;
+		int left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * 3 / 2 + CLOSED_HAND_SPACING;
+		Point2D pt = transform(getRotation(p), new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER));
+		return pt;
+	}
+
+	private void removeCardFromHandAndPutOnFaceUp(Player p, CardEntity card) {
+		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
+
+		cards.remove(card);
+		//this should put it after the other face up cards
+		cards.add(curCardRanges.getHandStart(), card);
+
+		curCardRanges.handLengthened(-1);
+		curCardRanges.faceUpLengthened(1);
 	}
 
 	private void removeCardFromPlayerAndPutOnDiscardPile(TurnContext cx, Player p, CardEntity card) {
@@ -97,22 +131,37 @@ public class ShitheadPanel extends JComponent {
 	}
 
 	public void updateState(double tDelta) {
-		TurnContext cx = model.getCurrentTurnContext();
+		Player p = model.getPlayer(model.getCurrentPlayer());
+		TurnContext cx = p.getCurrentContext();
 		boolean localPlayer = cx != null && (model.getCurrentPlayer() == model.getLocalPlayerNumber());
 		boolean findCardToDrag = false;
 		if (dragged != null) {
 			if (!input.mouseDown() || !localPlayer) {
-				if (localPlayer && (cx.blind || getDiscardPileBounds().contains(input.getCursor()))) {
-					GuiLocalPlayer p = (GuiLocalPlayer) model.getPlayer(model.getCurrentPlayer());
-					if (cx.g.isMoveLegal(dragged.getValue())) {
-						//assert dragged is from current player's face down, face up, or hand
-						dragged.mark(getDiscardPileLocation(), 0, 1);
-						removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
-						p.cardChosen(dragged.getValue());
-					} else if (cx.blind) {
-						p.cardChosen(dragged.getValue());
-					} else {
-						drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cx.g.getTopCardRank() + ".");
+				if (localPlayer) {
+					if (cx.choosingFaceUp) {
+						if (getLocalFaceUpCardBounds(p.getFaceUp().size()).contains(input.getCursor())) {
+							dragged.mark(getFaceUpCardLocation(p, p.getFaceUp().size()), 0, 1);
+							removeCardFromHandAndPutOnFaceUp(p, dragged);
+							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
+						} else {
+							for (int i = p.getFaceUp().size(); i < 3; i++) {
+								if (getLocalFaceUpCardBounds(i).contains(input.getCursor())) {
+									drawHint("Please put your selection on the leftmost available location.");
+									break;
+								}
+							}
+						}
+					} else if (cx.blind || getDiscardPileBounds().contains(input.getCursor())) {
+						if (cx.g.isMoveLegal(dragged.getValue())) {
+							//assert dragged is from current player's face down, face up, or hand
+							dragged.mark(getDiscardPileLocation(), 0, 1);
+							removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
+							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
+						} else if (cx.blind) {
+							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
+						} else {
+							drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cx.g.getTopCardRank() + ".");
+						}
 					}
 				}
 				dragged.reset();
@@ -146,6 +195,10 @@ public class ShitheadPanel extends JComponent {
 		}
 	}
 
+	private double getRotation(Player p) {
+		return Math.PI * 2 * (p.getPlayerId() - model.getLocalPlayerNumber()) / model.getPlayerCount();
+	}
+
 	private void repositionFaceDown(Player p) {
 		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
 		List<Card> faceDown = p.getFaceDown();
@@ -170,7 +223,7 @@ public class ShitheadPanel extends JComponent {
 		for (int i = p.getPlayerId() + 1; i < playerIndices.length; i++)
 			playerIndices[i].shifted(delta);
 
-		double rot = Math.PI * 2 * (p.getPlayerId() - model.getLocalPlayerNumber()) / model.getPlayerCount();
+		double rot = getRotation(p);
 		final int OPEN_HAND_SPACING = 2;
 		//closest we can get without 5 players colliding
 		final int DISTANCE_FROM_CENTER = 160;
@@ -180,44 +233,6 @@ public class ShitheadPanel extends JComponent {
 			CardEntity c = cards.get(curCardRanges.getFaceDownStart() + i);
 			c.autoMove(rot, transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER)), 1);
 			c.setShow(false);
-		}
-	}
-
-	private void repositionFaceUp(Player p) {
-		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
-		List<Card> faceUp = p.getFaceUp();
-		List<CardEntity> moved = new ArrayList<CardEntity>(faceUp.size());
-		//All cards in updated face up should have come from old face up or draw deck
-		//so we don't have to worry about taking cards from other players and having to
-		//update their PlayerCardsRange.
-		//Since we assert that updated face up has cards only from old face up or draw deck,
-		//we can skip all the cards before our face up since our own face up comes after them,
-		//and cards from draw deck should come after all face ups.
-		for (ListIterator<CardEntity> iter = cards.listIterator(curCardRanges.getFaceUpStart()); iter.hasNext() && moved.size() < faceUp.size(); ) {
-			CardEntity ent = iter.next();
-			if (faceUp.contains(ent.getValue())) {
-				iter.remove();
-				moved.add(ent);
-			}
-		}
-		assert moved.size() == faceUp.size();
-		int delta = moved.size() - curCardRanges.getFaceUpLength();
-		cards.addAll(curCardRanges.getFaceUpStart(), moved);
-		curCardRanges.faceUpLengthened(delta);
-		for (int i = p.getPlayerId() + 1; i < playerIndices.length; i++)
-			playerIndices[i].shifted(delta);
-
-		double rot = Math.PI * 2 * (p.getPlayerId() - model.getLocalPlayerNumber()) / model.getPlayerCount();
-		final int OPEN_HAND_SPACING = 2;
-		final int CLOSED_HAND_SPACING = 4;
-		//closest we can get without 5 players colliding
-		final int DISTANCE_FROM_CENTER = 160;
-		int i = 0;
-		int left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * 3 / 2 + CLOSED_HAND_SPACING;
-		for (i = 0; i < curCardRanges.getFaceUpLength(); i++) {
-			CardEntity c = cards.get(curCardRanges.getFaceUpStart() + i);
-			c.autoMove(rot, transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER)), 1);
-			c.setShow(true);
 		}
 	}
 
@@ -239,20 +254,28 @@ public class ShitheadPanel extends JComponent {
 			}
 		}
 		assert moved.size() == hand.size();
+
+		Collections.sort(moved, new Comparator<CardEntity>() {
+			@Override
+			public int compare(CardEntity ent1, CardEntity ent2) {
+				return ent1.getValue().getRank().compareTo(ent2.getValue().getRank());
+			}
+		});
+
 		int delta = moved.size() - curCardRanges.getHandLength();
 		cards.addAll(curCardRanges.getHandStart(), moved);
 		curCardRanges.handLengthened(delta);
 		for (int i = p.getPlayerId() + 1; i < playerIndices.length; i++)
 			playerIndices[i].shifted(delta);
 
-		double rot = Math.PI * 2 * (p.getPlayerId() - model.getLocalPlayerNumber()) / model.getPlayerCount();
+		double rot = getRotation(p);
 		final int OPEN_HAND_SPACING = 2;
 		final int CLOSED_HAND_SPACING = 4;
 		//closest we can get without 5 players colliding
 		final int DISTANCE_FROM_CENTER = 160;
 		int i;
 		int left;
-		if (p.getPlayerId() == model.getCurrentPlayer()) {
+		if (((GuiPlayer) p).isThinking()) {
 			i = 0;
 			left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * p.getHand().size() / 2;
 			for (i = 0; i < curCardRanges.getHandLength(); i++) {
@@ -277,7 +300,6 @@ public class ShitheadPanel extends JComponent {
 
 	public void dealtCards(Player p) {
 		repositionFaceDown(p);
-		repositionFaceUp(p);
 		repositionHand(p);
 	}
 
@@ -287,15 +309,13 @@ public class ShitheadPanel extends JComponent {
 		for (ListIterator<CardEntity> iter = cards.listIterator(playerIndices[playerIndices.length - 1].getEndIndexPlusOne()); iter.hasNext(); ) {
 			CardEntity ent = iter.next();
 			//if it's not a draw deck card, it has to be from the old discard pile
-			if (!model.getDeckCards().contains(ent)) {
-				iter.remove();
+			if (!model.getDeckCards().contains(ent.getValue()))
 				ent.autoMove(4 * Math.PI, new Point(0, 0), 0);
-			}
 		}
 	}
 
 	public void remotePlayerPutCard(Player p, Card c) {
-		TurnContext cx = model.getCurrentTurnContext();
+		TurnContext cx = p.getCurrentContext();
 		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
 		int startIndex = -1;
 		int remaining = 0;
@@ -317,14 +337,19 @@ public class ShitheadPanel extends JComponent {
 				found = true;
 		}
 		if (found) {
-			removeCardFromPlayerAndPutOnDiscardPile(cx, p, ent);
-			ent.autoMove(0, getDiscardPileLocation(), 1);
+			ent.setShow(true);
+			if (cx.choosingFaceUp) {
+				removeCardFromHandAndPutOnFaceUp(p, ent);
+				ent.autoMove(getRotation(p), getFaceUpCardLocation(p, p.getFaceUp().size() - 1), 1);
+			} else {
+				removeCardFromPlayerAndPutOnDiscardPile(cx, p, ent);
+				ent.autoMove(0, getDiscardPileLocation(), 1);
+			}
 		}
 	}
 
-	public void playerPickedUpCards(Player p, String message) {
+	public void playerPickedUpCards(Player p) {
 		repositionHand(p);
-		drawHint(message);
 	}
 
 	public void playerEndedTurn(Player p) {

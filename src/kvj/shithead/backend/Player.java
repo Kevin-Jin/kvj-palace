@@ -27,6 +27,7 @@ public abstract class Player {
 	private final List<Card> hand;
 	private final int playerId;
 	protected final PlayerAdapter adapter;
+	protected TurnContext currentCx;
 
 	public Player(int playerId, PlayerAdapter adapter) {
 		faceDown = new ArrayList<Card>();
@@ -61,6 +62,10 @@ public abstract class Player {
 		});
 	}
 
+	public TurnContext getCurrentContext() {
+		return currentCx;
+	}
+
 	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
 
 	protected void moveFromHandToFaceUp(TurnContext state) {
@@ -70,13 +75,15 @@ public abstract class Player {
 	}
 
 	public TurnContext chooseFaceUp(Game g) {
-		TurnContext state = new TurnContext(g);
+		TurnContext state = new TurnContext(g, true);
+		currentCx = state;
 		state.currentPlayable = getHand();
 		state.blind = false;
 		for (int i = 0; i < 3; i++) {
 			state.selection = chooseCard(state, "Choose one card: ", false, true);
 			moveFromHandToFaceUp(state);
 		}
+		currentCx = null;
 		return state;
 	}
 
@@ -153,7 +160,7 @@ public abstract class Player {
 		playCard(state);
 
 		boolean cleared = false, wildcard = false, sameRank = false;
-		while (!state.won && ((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && containsRank(state.currentPlayable, state.selection.getRank()))) && state.selection != null) {
+		while (!state.won && ((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && state.selection != null && containsRank(state.currentPlayable, state.selection.getRank()))) && state.selection != null) {
 			if (cleared)
 				clearDiscardPile(state);
 			if (wildcard)
@@ -173,7 +180,8 @@ public abstract class Player {
 	}
 
 	public TurnContext playTurn(Game g) {
-		TurnContext state = new TurnContext(g);
+		TurnContext state = new TurnContext(g, false);
+		currentCx = state;
 
 		if (!getHand().isEmpty())
 			switchToHand(state);
@@ -210,6 +218,7 @@ public abstract class Player {
 			cardsPickedUp(state);
 		}
 
+		currentCx = null;
 		return state;
 	}
 
