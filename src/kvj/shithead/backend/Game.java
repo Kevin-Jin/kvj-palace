@@ -151,7 +151,9 @@ public abstract class Game {
 	}
 
 	public Card draw() {
-		return drawPile.pop();
+		synchronized (drawPile.getList()) {
+			return drawPile.pop();
+		}
 	}
 
 	public int remainingDrawCards() {

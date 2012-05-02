@@ -12,7 +12,6 @@ public class TurnContext {
 	public List<Card> currentPlayable;
 	public Card selection;
 	public boolean blind;
-	public boolean endTurn;
 	public boolean won;
 
 	public TurnContext(Game g, boolean choosingFaceUp) {

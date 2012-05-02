@@ -1,8 +1,5 @@
 package kvj.shithead.frontend.gui;
 
-import java.util.List;
-
-import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
 import kvj.shithead.backend.Game;
 import kvj.shithead.backend.Player;
@@ -32,6 +29,7 @@ public class GuiGame extends Game {
 				players[start + i] = new GuiLocalPlayer(start + i, new ClientAdapter(client), this);
 			remainingPlayers.add(Integer.valueOf(start + i));
 			connectedCount++;
+			localPlayer = start + i;
 		}
 	}
 
@@ -77,12 +75,14 @@ public class GuiGame extends Game {
 		return localPlayer;
 	}
 
-	public List<Card> getDiscardPile() {
-		return discardPile;
-	}
-
 	public int getCurrentPlayer() {
 		return currentPlayer;
+	}
+
+	public int getDiscardPileSize() {
+		synchronized (discardPile) {
+			return discardPile.size();
+		}
 	}
 
 	public void setView(ShitheadPanel panel) {

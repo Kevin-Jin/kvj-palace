@@ -70,7 +70,9 @@ public abstract class Player {
 
 	protected void moveFromHandToFaceUp(TurnContext state) {
 		getHand().remove(state.selection);
-		getFaceUp().add(state.selection);
+		synchronized (getFaceUp()) {
+			getFaceUp().add(state.selection);
+		}
 		state.events.add(new PlayEvent.HandToFaceUp(state.selection));
 	}
 
@@ -120,7 +122,9 @@ public abstract class Player {
 	}
 
 	protected void putCard(TurnContext state) {
-		state.currentPlayable.remove(state.selection);
+		synchronized (state.currentPlayable) {
+			state.currentPlayable.remove(state.selection);
+		}
 		state.g.addToDiscardPile(state.selection);
 		state.events.add(new PlayEvent.CardPlayed(state.selection));
 	}
