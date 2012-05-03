@@ -180,14 +180,13 @@ public class ShitheadPanel extends JComponent {
 								}
 							}
 						}
+					//if cx.blind, we already flipped the face down card, so we must
+					//choose current selection no matter where we drop it
 					} else if (cx.blind || getDiscardPileBounds().contains(input.getCursor())) {
-						if (cx.g.isMoveLegal(dragged.getValue())) {
+						if (((GuiLocalPlayer) p).moveLegal(dragged.getValue())) {
 							//assert dragged is from current player's face down, face up, or hand
 							dragged.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
 							removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
-							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
-						} else if (cx.blind) {
-							//TODO: if gamble failed, does not return failed card to hand
 							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
 						} else {
 							drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cx.g.getTopCardRank() + ".");

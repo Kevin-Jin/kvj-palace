@@ -28,6 +28,12 @@ public class GuiLocalPlayer extends GuiPlayer {
 		return null;
 	}
 
+	public boolean moveLegal(Card c) {
+		if (currentCx.selection != null)
+			return (currentCx.selection.getRank() == c.getRank());
+		return currentCx.blind || currentCx.g.isMoveLegal(c);
+	}
+
 	public void cardChosen(Card value) {
 		chosen = value;
 		inputWait.countDown();

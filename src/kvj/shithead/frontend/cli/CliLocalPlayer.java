@@ -35,6 +35,7 @@ public class CliLocalPlayer extends Player {
 		this.clearScreen = clearScreen;
 	}
 
+	//TODO: for everything besides sameRank case, allow player to end turn early through some sentinel value (0?)
 	@Override
 	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
 		Card selection;
