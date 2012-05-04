@@ -9,27 +9,10 @@ import java.util.Scanner;
 
 import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
-import kvj.shithead.backend.Game;
 import kvj.shithead.backend.PacketMaker;
 
 public class CliLaunch {
 	private static final int DEFAULT_PORT = 32421;
-
-	private static void waitForConnectors(Game g, ServerSocket socket, int start, int end) throws IOException {
-		for (int i = start, j; i < end; i += j) {
-			System.out.println("Waiting for " + (end - i) + " more player(s)...");
-			Client client = new Client(socket.accept());
-			client.socket().getOutputStream().write(g.occupiedCount());
-			client.socket().getOutputStream().write(g.maxSize());
-			int playersAmount = client.socket().getInputStream().read();
-			for (j = 0; j < playersAmount; j++)
-				g.constructRemotePlayer(i + j, client, true);
-			for (Client alreadyConnected : g.getConnected())
-				for (j = 0; j < playersAmount; j++)
-					alreadyConnected.socket().getOutputStream().write(PacketMaker.ADD_PLAYER);
-			g.clientConnected(client);
-		}
-	}
 
 	public static void main(String[] args) throws IOException {
 		Scanner scan = new Scanner(System.in);
@@ -60,7 +43,22 @@ public class CliLaunch {
 			if (localPlayers < maxPlayers) {
 				System.out.print("Listen port (leave blank for default port): ");
 				String port = scan.nextLine();
-				waitForConnectors(g, new ServerSocket(port.isEmpty() ? DEFAULT_PORT : Integer.parseInt(port)), localPlayers, maxPlayers);
+
+				ServerSocket s = new ServerSocket(port.isEmpty() ? DEFAULT_PORT : Integer.parseInt(port));
+				for (int i = localPlayers, j; i < maxPlayers; i += j) {
+					System.out.println("Waiting for " + (maxPlayers - i) + " more player(s)...");
+					Client client = new Client(s.accept());
+					client.socket().getOutputStream().write(g.occupiedCount());
+					client.socket().getOutputStream().write(g.maxSize());
+					int playersAmount = client.socket().getInputStream().read();
+					for (j = 0; j < playersAmount; j++)
+						g.constructRemotePlayer(i + j, client, true);
+					for (Client alreadyConnected : g.getConnected())
+						for (j = 0; j < playersAmount; j++)
+							alreadyConnected.socket().getOutputStream().write(PacketMaker.ADD_PLAYER);
+					g.clientConnected(client);
+				}
+
 				byte[] message = PacketMaker.serializedDeck(g.getDeckCards());
 				for (Client client : g.getConnected())
 					client.socket().getOutputStream().write(message);

@@ -10,10 +10,11 @@ import kvj.shithead.backend.adapter.NoOperationAdapter;
 
 public class GuiGame extends Game {
 	private int localPlayer;
-	private ShitheadPanel view;
+	private final ShitheadPanel view;
 
-	public GuiGame(int playerCount) {
+	public GuiGame(int playerCount, ShitheadPanel view) {
 		super(playerCount);
+		this.view = view;
 	}
 
 	public int getPlayerCount() {
@@ -83,10 +84,6 @@ public class GuiGame extends Game {
 		synchronized (discardPile) {
 			return discardPile.size();
 		}
-	}
-
-	public void setView(ShitheadPanel panel) {
-		view = panel;
 	}
 
 	public ShitheadPanel getView() {

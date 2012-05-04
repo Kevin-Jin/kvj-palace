@@ -42,8 +42,7 @@ public class ShitheadPanel extends JComponent {
 	private ImageCache cardImages;
 	private PlayerCardsRange[] playerIndices;
 
-	public ShitheadPanel(GuiGame model) {
-		this.model = model;
+	public ShitheadPanel() {
 		input = new ShitheadController();
 		addMouseListener(input);
 		addMouseMotionListener(input);
@@ -54,12 +53,16 @@ public class ShitheadPanel extends JComponent {
 		cardImages.populate();
 		cards = new ArrayList<CardEntity>();
 		tempDrawOver = new LinkedHashSet<CardEntity>();
-		playerIndices = new PlayerCardsRange[model.getPlayerCount()];
-		for (int i = 0; i < playerIndices.length; i++)
-			playerIndices[i] = new PlayerCardsRange();
 		ReadWriteLock locks = new ReentrantReadWriteLock();
 		cardsReadLock = locks.readLock();
 		cardsWriteLock = locks.writeLock();
+	}
+
+	public void setModel(GuiGame model) {
+		this.model = model;
+		playerIndices = new PlayerCardsRange[model.getPlayerCount()];
+		for (int i = 0; i < playerIndices.length; i++)
+			playerIndices[i] = new PlayerCardsRange();
 	}
 
 	private Point2D transform(double rotation, Point2D pt) {
