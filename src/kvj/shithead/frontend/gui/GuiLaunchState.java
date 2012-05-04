@@ -112,7 +112,7 @@ public class GuiLaunchState {
 					SwingUtilities.invokeLater(new Runnable() {
 						@Override
 						public void run() {
-							JOptionPane.showMessageDialog(panel, "Please enter a number from 1-5 in max players.", "Could not bind", JOptionPane.ERROR_MESSAGE);
+							JOptionPane.showMessageDialog(panel, "Max players must be in the range of [2-5].", "Could not bind", JOptionPane.ERROR_MESSAGE);
 							bind.setEnabled(true);
 							bind.setText("Bind");
 						}
@@ -185,7 +185,6 @@ public class GuiLaunchState {
 					public void run() {
 						try {
 							Socket s = new Socket(hostAddress.getText(), Integer.parseInt(joinPort.getText()));
-							showGame(parent, parentLayout, gamePanel);
 							Client client = new Client(s);
 							int connectedPlayers = client.socket().getInputStream().read();
 							int playerCount = client.socket().getInputStream().read();
@@ -193,6 +192,7 @@ public class GuiLaunchState {
 
 							GuiGame g = new GuiGame(playerCount, gamePanel);
 							gamePanel.setModel(g);
+							showGame(parent, parentLayout, gamePanel);
 
 							int i;
 							for (i = 0; i < connectedPlayers; i++)
