@@ -50,6 +50,8 @@ public class Card {
 
 	private static final Map<Suit, Map<Rank, Card>> cache;
 
+	public static byte NULL_CARD = -1;
+
 	static {
 		Map<Suit, Map<Rank, Card>> suits = new HashMap<Suit, Map<Rank, Card>>();
 		for (Suit s : Suit.values()) {
@@ -83,12 +85,16 @@ public class Card {
 		return rank;
 	}
 
-	public byte serialize() {
+	public static byte serialize(Card c) {
+		if (c == null)
+			return NULL_CARD;
 		//4 bits for rank (and we'll only need 2 bits for suit)
-		return (byte) (suit.ordinal() << 4 | rank.ordinal());
+		return (byte) (c.suit.ordinal() << 4 | c.rank.ordinal());
 	}
 
 	public static Card deserialize(byte code) {
+		if (code == NULL_CARD)
+			return null;
 		return valueOf(Suit.values()[code >>> 4], Rank.values()[code & 0xF]);
 	}
 }

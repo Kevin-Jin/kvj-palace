@@ -150,7 +150,7 @@ public class GuiLaunchState {
 								client.socket().getOutputStream().write(message);
 
 							g.run();
-						} catch (NumberFormatException ex) {
+						} catch (IllegalArgumentException ex) {
 							SwingUtilities.invokeLater(new Runnable() {
 								@Override
 								public void run() {
@@ -215,7 +215,7 @@ public class GuiLaunchState {
 							}
 
 							g.run();
-						} catch (NumberFormatException ex) {
+						} catch (IllegalArgumentException ex) {
 							SwingUtilities.invokeLater(new Runnable() {
 								@Override
 								public void run() {

@@ -8,7 +8,6 @@ public abstract class BroadcastAdapter implements PlayerAdapter {
 
 	@Override
 	public void cardChosen(Card selected) {
-		if (selected != null)
-			broadcast(PacketMaker.selectCard(selected));
+		broadcast(PacketMaker.selectCard(selected));
 	}
 }

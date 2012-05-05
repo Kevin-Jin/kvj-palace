@@ -23,8 +23,6 @@ public class GuiRemotePlayer extends GuiPlayer {
 					selection = Card.deserialize(client.buffer[1]);
 					client.compactBuffer(2);
 				}
-			} else if (client.buffer[0] == PacketMaker.END_TURN) {
-				client.compactBuffer(1);
 			}
 		}
 

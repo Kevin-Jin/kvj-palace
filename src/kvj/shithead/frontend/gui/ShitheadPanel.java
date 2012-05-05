@@ -6,8 +6,11 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.font.LineBreakMeasurer;
+import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.text.AttributedString;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -89,10 +92,17 @@ public class ShitheadPanel extends JComponent {
 		}
 	}
 
-	private Rectangle getDiscardPileBounds() {
+	private Rectangle getDrawPileBounds(int i) {
+		//TODO: share with makeDrawDeckEntities
+		final int CLOSED_HAND_SPACING = 2;
+		int right = -cardImages.getCardWidth() - 30;
+		return new Rectangle(WIDTH / 2 + right - i * CLOSED_HAND_SPACING, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * CLOSED_HAND_SPACING + cardImages.getCardWidth(), cardImages.getCardHeight());
+	}
+
+	private Rectangle getDiscardPileBounds(int i) {
 		final int CLOSED_HAND_SPACING = 2;
 		int left = -28;
-		return new Rectangle(WIDTH / 2 + left, HEIGHT / 2 - cardImages.getCardHeight() / 2, model.getDiscardPileSize() * CLOSED_HAND_SPACING + cardImages.getCardWidth(), cardImages.getCardHeight());
+		return new Rectangle(WIDTH / 2 + left, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * CLOSED_HAND_SPACING + cardImages.getCardWidth(), cardImages.getCardHeight());
 	}
 
 	private Point getDiscardPileLocation(int i) {
@@ -185,7 +195,7 @@ public class ShitheadPanel extends JComponent {
 						}
 					//if cx.blind, we already flipped the face down card, so we must
 					//choose current selection no matter where we drop it
-					} else if (cx.blind || getDiscardPileBounds().contains(input.getCursor())) {
+					} else if (cx.blind || getDiscardPileBounds(model.getDiscardPileSize()).contains(input.getCursor())) {
 						if (((GuiLocalPlayer) p).moveLegal(dragged.getValue())) {
 							//assert dragged is from current player's face down, face up, or hand
 							dragged.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
@@ -203,6 +213,8 @@ public class ShitheadPanel extends JComponent {
 			}
 		} else {
 			if (input.mouseDown() && localPlayer)
+				//TODO: if (getDrawPileBounds(Math.max(model.getDrawDeckSize() - 1, 0)).contains(input.getCursor())), p.cardChosen(null)
+				//(and make sure we don't repeatedly choose null for the card for however long we hold the mouse button down)
 				findCardToDrag = true;
 		}
 		for (Iterator<CardEntity> iter = tempDrawOver.iterator(); iter.hasNext(); )
@@ -466,12 +478,41 @@ public class ShitheadPanel extends JComponent {
 		g2d.drawImage(card.show() ? cardImages.getFront(card.getValue().getSuit(), card.getValue().getRank()) : cardImages.getBack(), card.getTransform(cardImages.getCardWidth(), cardImages.getCardHeight()), null);
 	}
 
+	private void drawWrappedString(Graphics2D g2d, Point pos, String s, float width) {
+		LineBreakMeasurer measurer = new LineBreakMeasurer(new AttributedString(s).getIterator(), g2d.getFontRenderContext());
+		while (measurer.getPosition() < s.length()) {
+			TextLayout layout = measurer.nextLayout(width);
+			pos.y += layout.getAscent();
+			layout.draw(g2d, pos.x, pos.y);
+			pos.y += layout.getDescent() + layout.getLeading();
+		}
+	}
+
 	@Override
 	protected void paintComponent(Graphics g) {
 		Graphics2D g2d = (Graphics2D) g;
 		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		g.drawOval(WIDTH / 2 - TABLE_DIAMETER / 2, HEIGHT / 2 - TABLE_DIAMETER / 2, TABLE_DIAMETER, TABLE_DIAMETER);
+
+		Rectangle discardPile = getDiscardPileBounds(0);
+		g2d.drawRect(discardPile.x, discardPile.y, discardPile.width - 1, discardPile.height - 1);
+		Rectangle drawPile = getDrawPileBounds(0);
+		g2d.drawRect(drawPile.x, drawPile.y, drawPile.width - 1, drawPile.height - 1);
+		if (model.getCurrentPlayer() == model.getLocalPlayerNumber()) {
+			TurnContext cx = model.getPlayer(model.getCurrentPlayer()).getCurrentContext();
+			if (cx != null && !cx.choosingFaceUp) {
+				if (model.getDiscardPileSize() == 0)
+					drawWrappedString(g2d, new Point(discardPile.x + 2, discardPile.y), "Drop card here", discardPile.width);
+				else
+					g2d.drawString("Drop card on previously played cards", discardPile.x, discardPile.y - 1);
+				if (model.getDrawDeckSize() == 0)
+					drawWrappedString(g2d, new Point(drawPile.x + 2, drawPile.y), "Click here to end turn", discardPile.width);
+				else
+					g2d.drawString("Click a draw card to end your turn", drawPile.x, drawPile.y + drawPile.height + g2d.getFontMetrics().getAscent());
+			}
+		}
+
 		cardsReadLock.lock();
 		try {
 			for (CardEntity card : cards)

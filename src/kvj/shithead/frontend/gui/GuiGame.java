@@ -86,6 +86,12 @@ public class GuiGame extends Game {
 		}
 	}
 
+	public int getDrawDeckSize() {
+		synchronized (getDeckCards()) {
+			return getDeckCards().size();
+		}
+	}
+
 	public ShitheadPanel getView() {
 		return view;
 	}

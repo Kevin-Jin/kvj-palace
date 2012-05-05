@@ -6,8 +6,7 @@ public class PacketMaker {
 	public static final byte //op codes
 		ADD_PLAYER = 0x01,
 		DECK = 0x02,
-		SELECT_CARD = 0x03,
-		END_TURN = 0x04
+		SELECT_CARD = 0x03
 	;
 
 	public static byte[] serializedDeck(List<Card> cards) {
@@ -16,15 +15,11 @@ public class PacketMaker {
 		int i = 0;
 		message[i++] = PacketMaker.DECK;
 		for (Card card : cards)
-			message[i++] = card.serialize();
+			message[i++] = Card.serialize(card);
 		return message;
 	}
 
 	public static byte[] selectCard(Card selected) {
-		return new byte[] { SELECT_CARD, selected.serialize() };
-	}
-
-	public static byte[] endTurn() {
-		return new byte[] { END_TURN };
+		return new byte[] { SELECT_CARD, Card.serialize(selected) };
 	}
 }
