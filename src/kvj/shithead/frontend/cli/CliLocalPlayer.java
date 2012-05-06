@@ -58,11 +58,11 @@ public class CliLocalPlayer extends Player {
 			boolean notACard = false, notInHand = false, notLegal = false;
 			while ((!canSkip || !input.equals("0")) && ((notACard = (selectionRank == null)) || (notInHand = (selection = getCardOfAnySuit(state.currentPlayable, selectionRank)) == null) || (notLegal = checkDiscardPile && !state.g.isMoveLegal(selection)))) {
 				if (notACard)
-					System.out.print("Your selection is not a valid card. Try again: ");
+					System.out.print("Your selection is not a valid card. Try again" + (canSkip ? " (0 to end turn)" : "") + ": ");
 				else if (notInHand)
-					System.out.print("You do not have a " + selectionRank + " in your hand. Try again (0 to end turn): ");
+					System.out.print("You do not have a " + selectionRank + " in your hand. Try again" + (canSkip ? " (0 to end turn)" : "") + ": ");
 				else if (notLegal)
-					System.out.print("You may not put a " + selectionRank + " on top of a " + state.g.getTopCardRank() + ". Try again (0 to end turn): ");
+					System.out.print("You may not put a " + selectionRank + " on top of a " + state.g.getTopCardRank() + ". Try again" + (canSkip ? " (0 to end turn)" : "") + ": ");
 				input = scan.nextLine();
 				selectionRank = Card.Rank.getRankByText(input);
 				selection = null;
