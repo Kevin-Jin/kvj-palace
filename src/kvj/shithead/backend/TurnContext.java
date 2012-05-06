@@ -8,7 +8,6 @@ public class TurnContext {
 	public final boolean choosingFaceUp;
 	public final List<PlayEvent> events;
 	public final List<Card> pickedUp;
-	public boolean pickedUpDiscardPile = false;
 	public List<Card> currentPlayable;
 	public Card selection;
 	public boolean blind;

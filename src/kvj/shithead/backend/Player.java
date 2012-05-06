@@ -143,6 +143,7 @@ public abstract class Player {
 	protected void pickUpPile(TurnContext state, String message) {
 		state.g.transferDiscardPile(state.pickedUp);
 		pickedUpCards(state);
+		state.events.add(new PlayEvent.PilePickedUp());
 
 		switchToHand(state);
 		state.selection = chooseCard(state, "Choose first card of new discard pile", false, false, true);
@@ -150,8 +151,6 @@ public abstract class Player {
 			turnEndedEarly();
 		else
 			finishTurn(state);
-
-		state.events.add(new PlayEvent.PilePickedUp());
 	}
 
 	private boolean hasValidMove(TurnContext state) {
