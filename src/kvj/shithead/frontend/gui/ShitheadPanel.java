@@ -212,13 +212,12 @@ public class ShitheadPanel extends JComponent {
 			}
 		} else {
 			if (input.mouseDown() && localPlayer)
-				//TODO: if (getDrawPileBounds(Math.max(model.getDrawDeckSize() - 1, 0)).contains(input.getCursor())), p.cardChosen(null)
-				//(and make sure we don't repeatedly choose null for the card for however long we hold the mouse button down)
 				findCardToDrag = true;
 		}
 		for (Iterator<CardEntity> iter = tempDrawOver.iterator(); iter.hasNext(); )
 			if (iter.next().stopTempDrawingOver())
 				iter.remove();
+
 		//go in reverse so card that was painted last
 		//will be the first candidate for manipulation
 		cardsReadLock.lock();
@@ -243,6 +242,21 @@ public class ShitheadPanel extends JComponent {
 			}
 		} finally {
 			cardsReadLock.unlock();
+		}
+
+		//do this after the find card to drag routine in case
+		//there are cards that are drawn over the draw deck that
+		//could be selected first
+		if (localPlayer && dragged == null) {
+			if (input.mouseDown()) {
+				if (!input.isFlagged() && ((GuiLocalPlayer) p).canEndTurn() && getDrawPileBounds(Math.max(model.getDrawDeckSize() - 1, 0)).contains(input.getCursor())) {
+					((GuiLocalPlayer) p).cardChosen(null);
+					input.flag();
+				}
+			} else {
+				if (input.isFlagged())
+					input.unflag();
+			}
 		}
 	}
 

@@ -35,43 +35,50 @@ public class CliLocalPlayer extends Player {
 		this.clearScreen = clearScreen;
 	}
 
-	//TODO: for everything besides sameRank case, allow player to end turn early through some sentinel value (0?)
 	@Override
-	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
-		Card selection;
+	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile, boolean canSkip) {
+		Card selection = null;
 		if (sameRank) {
+			assert canSkip;
 			System.out.print("You have another " + state.selection.getRank() + ". Would you like to put it down? (y/n): ");
-			String yesNo = scan.nextLine();
-			while (!yesNo.equalsIgnoreCase("Y") && !yesNo.equalsIgnoreCase("YES") && !yesNo.equalsIgnoreCase("N") && !yesNo.equalsIgnoreCase("NO")) {
+			String input = scan.nextLine();
+			while (!input.equalsIgnoreCase("Y") && !input.equalsIgnoreCase("YES") && !input.equalsIgnoreCase("N") && !input.equalsIgnoreCase("NO")) {
 				System.out.print("Please type Y (yes) or N (no): ");
-				yesNo = scan.nextLine();
+				input = scan.nextLine();
 			}
-			if (yesNo.equalsIgnoreCase("N") || yesNo.equalsIgnoreCase("NO"))
-				selection = null;
-			else
+			if (input.equalsIgnoreCase("Y") || input.equalsIgnoreCase("YES"))
 				selection = getCardOfAnySuit(state.currentPlayable, state.selection.getRank());
 		} else if (!state.blind) {
+			if (canSkip)
+				selectText += " (0 to end turn)";
+			selectText += ": ";
 			System.out.print(selectText);
-			Card.Rank selectionRank = Card.Rank.getRankByText(scan.nextLine());
+			String input = scan.nextLine();
+			Card.Rank selectionRank = Card.Rank.getRankByText(input);
 			boolean notACard = false, notInHand = false, notLegal = false;
-			while ((notACard = (selectionRank == null)) || (notInHand = (selection = getCardOfAnySuit(state.currentPlayable, selectionRank)) == null) || (notLegal = checkDiscardPile && !state.g.isMoveLegal(selection))) {
+			while ((!canSkip || !input.equals("0")) && ((notACard = (selectionRank == null)) || (notInHand = (selection = getCardOfAnySuit(state.currentPlayable, selectionRank)) == null) || (notLegal = checkDiscardPile && !state.g.isMoveLegal(selection)))) {
 				if (notACard)
 					System.out.print("Your selection is not a valid card. Try again: ");
 				else if (notInHand)
-					System.out.print("You do not have a " + selectionRank + " in your hand. Try again: ");
+					System.out.print("You do not have a " + selectionRank + " in your hand. Try again (0 to end turn): ");
 				else if (notLegal)
-					System.out.print("You may not put a " + selectionRank + " on top of a " + state.g.getTopCardRank() + ". Try again: ");
-				selectionRank = Card.Rank.getRankByText(scan.nextLine());
+					System.out.print("You may not put a " + selectionRank + " on top of a " + state.g.getTopCardRank() + ". Try again (0 to end turn): ");
+				input = scan.nextLine();
+				selectionRank = Card.Rank.getRankByText(input);
+				selection = null;
 			}
 		} else {
-			System.out.print("Choose a number from 1 to " + state.currentPlayable.size() + " (inclusive): ");
-			int index;
+			assert canSkip;
+			System.out.print("Choose a number from 1 to " + state.currentPlayable.size() + " (inclusive) (0 to end turn): ");
 			String input = scan.nextLine();
-			while (!isNumber(input) || (index = Integer.parseInt(input)) < 1 || index > state.currentPlayable.size()) {
-				System.out.print(input + " is not a number from 1 to " + state.currentPlayable.size() + " inclusive. Try again: ");
+			int index;
+			while (!isNumber(input) || (index = Integer.parseInt(input)) < 0 || index > state.currentPlayable.size()) {
+				System.out.print(input + " is not a number from 1 to " + state.currentPlayable.size() + " inclusive. Try again (0 to end turn): ");
 				input = scan.nextLine();
+				selection = null;
 			}
-			selection = state.currentPlayable.get(index - 1);
+			if (index != 0)
+				selection = state.currentPlayable.get(index - 1);
 		}
 
 		adapter.cardChosen(selection);
@@ -139,8 +146,7 @@ public class CliLocalPlayer extends Player {
 	protected void clearDiscardPile(TurnContext state) {
 		super.clearDiscardPile(state);
 		System.out.print("The discard pile has been cleared. ");
-		if (state.selection == null) {
-			assert state.g.canDraw() && state.currentPlayable.isEmpty();
+		if (state.selection == null && state.g.canDraw() && state.currentPlayable.isEmpty()) {
 			System.out.println("Since cards can be drawn, you must draw and you cannot put down any more cards.");
 		} else if (state.won) {
 			System.out.println();
@@ -150,12 +156,16 @@ public class CliLocalPlayer extends Player {
 	@Override
 	protected void wildCardPlayed(TurnContext state) {
 		System.out.print("You have put down a wildcard. ");
-		if (state.selection == null) {
-			assert state.g.canDraw() && state.currentPlayable.isEmpty();
+		if (state.selection == null && state.g.canDraw() && state.currentPlayable.isEmpty()) {
 			System.out.println("Since cards can be drawn, you must draw and you cannot put down any more cards.");
 		} else if (state.won) {
 			System.out.println();
 		}
+	}
+
+	@Override
+	protected void turnEndedEarly() {
+		System.out.println("You ended your turn early.");
 	}
 
 	@Override

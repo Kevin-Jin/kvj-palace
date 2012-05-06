@@ -66,7 +66,7 @@ public abstract class Player {
 		return currentCx;
 	}
 
-	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile);
+	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile, boolean canSkip);
 
 	protected void moveFromHandToFaceUp(TurnContext state) {
 		getHand().remove(state.selection);
@@ -82,7 +82,7 @@ public abstract class Player {
 		state.currentPlayable = getHand();
 		state.blind = false;
 		for (int i = 0; i < 3; i++) {
-			state.selection = chooseCard(state, "Choose one card: ", false, true);
+			state.selection = chooseCard(state, "Choose one card", false, true, false);
 			moveFromHandToFaceUp(state);
 		}
 		currentCx = null;
@@ -121,6 +121,10 @@ public abstract class Player {
 		
 	}
 
+	protected void turnEndedEarly() {
+		
+	}
+
 	protected void putCard(TurnContext state) {
 		synchronized (state.currentPlayable) {
 			state.currentPlayable.remove(state.selection);
@@ -129,9 +133,24 @@ public abstract class Player {
 		state.events.add(new PlayEvent.CardPlayed(state.selection));
 	}
 
+	private void pickedUpCards(TurnContext state) {
+		getHand().addAll(state.pickedUp);
+		sortHand();
+		cardsPickedUp(state);
+		state.pickedUp.clear();
+	}
+
 	protected void pickUpPile(TurnContext state, String message) {
 		state.g.transferDiscardPile(state.pickedUp);
-		state.pickedUpDiscardPile = true;
+		pickedUpCards(state);
+
+		switchToHand(state);
+		state.selection = chooseCard(state, "Choose first card of new discard pile", false, false, true);
+		if (state.selection == null)
+			turnEndedEarly();
+		else
+			finishTurn(state);
+
 		state.events.add(new PlayEvent.PilePickedUp());
 	}
 
@@ -163,15 +182,19 @@ public abstract class Player {
 	private void finishTurn(TurnContext state) {
 		playCard(state);
 
-		boolean cleared = false, wildcard = false, sameRank = false;
-		while (((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && state.selection != null && containsRank(state.currentPlayable, state.selection.getRank()))) && !state.won && state.selection != null) {
+		boolean cleared = false, wildcard = false, sameRank = false, skipped = false;
+		while (!skipped && ((cleared = (state.g.getTopCardRank() == Card.Rank.TWO || state.g.getSameRankCount() == 4)) || (wildcard = (state.g.getTopCardRank() == Card.Rank.TEN)) || (sameRank = !state.blind && state.selection != null && containsRank(state.currentPlayable, state.selection.getRank()))) && !state.won && state.selection != null) {
 			if (cleared)
 				clearDiscardPile(state);
 			if (wildcard)
 				wildCardPlayed(state);
-			state.selection = chooseCard(state, "Choose next card to put down: ", sameRank, false);
-			if (state.selection != null)
+			state.selection = chooseCard(state, "Choose next card to play", sameRank, false, true);
+			if (state.selection != null) {
 				playCard(state);
+			} else {
+				turnEndedEarly();
+				skipped = true;
+			}
 			cleared = wildcard = sameRank = false;
 		}
 		if (cleared)
@@ -181,6 +204,7 @@ public abstract class Player {
 
 		while (state.g.canDraw() && getHand().size() + state.pickedUp.size() < 3)
 			state.pickedUp.add(state.g.draw());
+		pickedUpCards(state);
 	}
 
 	public TurnContext playTurn(Game g) {
@@ -195,9 +219,11 @@ public abstract class Player {
 			switchToFaceDown(state);
 
 		if (hasValidMove(state) || state.blind) {
-			state.selection = chooseCard(state, "Choose first card to put down: ", false, true);
+			state.selection = chooseCard(state, "Choose first card to play", false, true, true);
 
-			if (!state.g.isMoveLegal(state.selection)) {
+			if (state.selection == null) {
+				pickUpPile(state, "You are unwilling to make any moves.");
+			} else if (!state.g.isMoveLegal(state.selection)) {
 				assert state.blind;
 				putCard(state);
 				pickUpPile(state, "You lost the gamble!");
@@ -205,19 +231,7 @@ public abstract class Player {
 				finishTurn(state);
 			}
 		} else {
-			pickUpPile(state, "You cannot make any moves.");
-		}
-
-		if (!state.pickedUp.isEmpty()) {
-			getHand().addAll(state.pickedUp);
-			sortHand();
-			cardsPickedUp(state);
-			if (state.pickedUpDiscardPile) {
-				switchToHand(state);
-
-				state.selection = chooseCard(state, "Choose first card of new discard pile: ", false, false);
-				finishTurn(state);
-			}
+			pickUpPile(state, "You are unable to make any moves.");
 		}
 
 		currentCx = null;

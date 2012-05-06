@@ -17,7 +17,7 @@ public class CliRemotePlayer extends Player {
 	}
 
 	@Override
-	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile) {
+	public Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile, boolean canSkip) {
 		Card selection = null;
 		if (client.fillBuffer(1)) {
 			if (client.buffer[0] == PacketMaker.SELECT_CARD) {
