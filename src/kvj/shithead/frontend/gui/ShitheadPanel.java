@@ -29,7 +29,10 @@ import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Player;
 import kvj.shithead.backend.TurnContext;
 
-//TODO: allow player to end his turn early
+//TODO: animate mouseDown, mouseOver for deck
+//TODO: animate mouseOver (pulsating outline?), mouseDown (solid outline?) for selectable cards,
+//and special animation when mouseDown over discard pile
+//TODO: outline group of selectable cards (TurnContext.currentPlayable)
 public class ShitheadPanel extends JComponent {
 	private static final long serialVersionUID = -6335150580109791737L;
 
@@ -108,6 +111,12 @@ public class ShitheadPanel extends JComponent {
 		//TODO: share with makeDrawDeckEntities
 		int right = -cardImages.getCardWidth() + DISCARD_PILE_OFFSET_FROM_CENTER + DRAW_DECK_OFFSET_FROM_DISCARD_PILE;
 		return new Rectangle(WIDTH / 2 + right - i * DRAW_CARDS_SEQUENCE_OFFSET, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * DRAW_CARDS_SEQUENCE_OFFSET + cardImages.getCardWidth(), cardImages.getCardHeight());
+	}
+
+	private Point getDrawDeckLocation(int i) {
+		//TODO: share with getDrawPileBounds
+		int right = -cardImages.getCardWidth() + DISCARD_PILE_OFFSET_FROM_CENTER + DRAW_DECK_OFFSET_FROM_DISCARD_PILE;
+		return new Point(WIDTH / 2 + right - i * DRAW_CARDS_SEQUENCE_OFFSET, HEIGHT / 2 + cardImages.getCardHeight() / 2);
 	}
 
 	private Rectangle getDiscardPileBounds(int i) {
@@ -249,13 +258,18 @@ public class ShitheadPanel extends JComponent {
 		//could be selected first
 		if (localPlayer && dragged == null) {
 			if (input.mouseDown()) {
-				if (!input.isFlagged() && ((GuiLocalPlayer) p).canEndTurn() && getDrawPileBounds(Math.max(model.getDrawDeckSize() - 1, 0)).contains(input.getCursor())) {
-					((GuiLocalPlayer) p).cardChosen(null);
-					input.flag();
-				}
+				if (input.getMark() == null)
+					input.mark();
 			} else {
-				if (input.isFlagged())
-					input.unflag();
+				Point mark = input.getMark();
+				if (mark != null) {
+					input.unmark();
+					if (((GuiLocalPlayer) p).canEndTurn()) {
+						Rectangle deckBounds = getDrawPileBounds(Math.max(model.getDrawDeckSize() - 1, 0));
+						if (deckBounds.contains(input.getCursor()) && deckBounds.contains(mark))
+							((GuiLocalPlayer) p).cardChosen(null);
+					}
+				}
 			}
 		}
 	}
@@ -495,10 +509,14 @@ public class ShitheadPanel extends JComponent {
 					drawWrappedString(g2d, new Point(discardPile.x + 2, discardPile.y), "Drop card here", discardPile.width);
 				else
 					g2d.drawString("Drop card on previously played cards", discardPile.x, discardPile.y - 1);
-				if (model.getDrawDeckSize() == 0)
+
+				int drawDeckSize = model.getDrawDeckSize();
+				if (drawDeckSize == 0) {
 					drawWrappedString(g2d, new Point(drawPile.x + 2, drawPile.y), "Click here to end turn", discardPile.width);
-				else
-					g2d.drawString("Click a draw card to end your turn", drawPile.x, drawPile.y + drawPile.height + g2d.getFontMetrics().getAscent());
+				} else {
+					Point pt = getDrawDeckLocation(drawDeckSize - 1);
+					g2d.drawString("Click the deck to end your turn", pt.x, pt.y + g2d.getFontMetrics().getAscent());
+				}
 			}
 		}
 

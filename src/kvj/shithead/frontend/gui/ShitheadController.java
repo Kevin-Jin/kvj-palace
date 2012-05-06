@@ -8,7 +8,7 @@ import java.awt.event.MouseMotionListener;
 public class ShitheadController implements MouseListener, MouseMotionListener {
 	private Point pt;
 	private boolean drag;
-	private boolean flag;
+	private Point saved;
 
 	public ShitheadController() {
 		pt = new Point(0, 0);
@@ -57,15 +57,15 @@ public class ShitheadController implements MouseListener, MouseMotionListener {
 		return drag;
 	}
 
-	public void flag() {
-		flag = true;
+	public void mark() {
+		saved = pt;
 	}
 
-	public boolean isFlagged() {
-		return flag;
+	public Point getMark() {
+		return saved;
 	}
 
-	public void unflag() {
-		flag = false;
+	public void unmark() {
+		saved = null;
 	}
 }
