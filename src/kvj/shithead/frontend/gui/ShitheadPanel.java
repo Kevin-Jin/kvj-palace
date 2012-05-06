@@ -36,6 +36,19 @@ public class ShitheadPanel extends JComponent {
 	private static final int WIDTH = 1280, HEIGHT = 800;
 	private static final int TABLE_DIAMETER = 800;
 
+	//will fit 5 players without having face down/face up collide
+	private static final int DISTANCE_FROM_CENTER = 160;
+	private static final int FACE_DOWN_SEQUENCE_MARGIN = 2;
+	private static final int FACE_UP_OFFSET_FROM_FACE_DOWN = 3;
+	private static final int DRAW_CARDS_SEQUENCE_OFFSET = 2;
+	private static final int DISCARDED_CARDS_SEQUENCE_OFFSET = 2;
+	//will fit a 52 card discard pile with 5 players and draw deck
+	//after dealing any amount of players
+	private static final int DISCARD_PILE_OFFSET_FROM_CENTER = -28;
+	private static final int DRAW_DECK_OFFSET_FROM_DISCARD_PILE = -2;
+	private static final int HAND_SEQUENCE_OFFSET = 4;
+	private static final int HAND_SEQUENCE_MARGIN = 2;
+
 	private List<CardEntity> cards;
 	private Lock cardsReadLock, cardsWriteLock;
 	private Set<CardEntity> tempDrawOver;
@@ -78,14 +91,13 @@ public class ShitheadPanel extends JComponent {
 	}
 
 	public void makeDrawDeckEntities() {
-		final int CLOSED_HAND_SPACING = 2;
 		int i = 0;
-		int right = -cardImages.getCardWidth() - 30;
+		int right = -cardImages.getCardWidth() + DISCARD_PILE_OFFSET_FROM_CENTER + DRAW_DECK_OFFSET_FROM_DISCARD_PILE;
 		cardsWriteLock.lock();
 		try {
 			synchronized (model.getDeckCards()) {
 				for (Card card : model.getDeckCards())
-					cards.add(new CardEntity(card, false, transform(0, new Point(right - i++ * CLOSED_HAND_SPACING, -cardImages.getCardHeight() / 2)), 0));
+					cards.add(new CardEntity(card, false, transform(0, new Point(right - i++ * DRAW_CARDS_SEQUENCE_OFFSET, -cardImages.getCardHeight() / 2)), 0));
 			}
 		} finally {
 			cardsWriteLock.unlock();
@@ -94,41 +106,28 @@ public class ShitheadPanel extends JComponent {
 
 	private Rectangle getDrawPileBounds(int i) {
 		//TODO: share with makeDrawDeckEntities
-		final int CLOSED_HAND_SPACING = 2;
-		int right = -cardImages.getCardWidth() - 30;
-		return new Rectangle(WIDTH / 2 + right - i * CLOSED_HAND_SPACING, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * CLOSED_HAND_SPACING + cardImages.getCardWidth(), cardImages.getCardHeight());
+		int right = -cardImages.getCardWidth() + DISCARD_PILE_OFFSET_FROM_CENTER + DRAW_DECK_OFFSET_FROM_DISCARD_PILE;
+		return new Rectangle(WIDTH / 2 + right - i * DRAW_CARDS_SEQUENCE_OFFSET, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * DRAW_CARDS_SEQUENCE_OFFSET + cardImages.getCardWidth(), cardImages.getCardHeight());
 	}
 
 	private Rectangle getDiscardPileBounds(int i) {
-		final int CLOSED_HAND_SPACING = 2;
-		int left = -28;
-		return new Rectangle(WIDTH / 2 + left, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * CLOSED_HAND_SPACING + cardImages.getCardWidth(), cardImages.getCardHeight());
+		return new Rectangle(WIDTH / 2 + DISCARD_PILE_OFFSET_FROM_CENTER, HEIGHT / 2 - cardImages.getCardHeight() / 2, i * DISCARDED_CARDS_SEQUENCE_OFFSET + cardImages.getCardWidth(), cardImages.getCardHeight());
 	}
 
 	private Point getDiscardPileLocation(int i) {
 		//TODO: share with getDiscardPileBounds
-		final int CLOSED_HAND_SPACING = 2;
-		int left = -28;
-		return new Point(WIDTH / 2 + left + i * CLOSED_HAND_SPACING + cardImages.getCardWidth() / 2, HEIGHT / 2);
+		return new Point(WIDTH / 2 + DISCARD_PILE_OFFSET_FROM_CENTER + i * DISCARDED_CARDS_SEQUENCE_OFFSET + cardImages.getCardWidth() / 2, HEIGHT / 2);
 	}
 
 	private Rectangle getLocalFaceUpCardBounds(int i) {
-		final int OPEN_HAND_SPACING = 2;
-		final int CLOSED_HAND_SPACING = 4;
-		//closest we can get without 5 players colliding
-		final int DISTANCE_FROM_CENTER = 160;
-		int left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * 3 / 2 + CLOSED_HAND_SPACING;
-		return new Rectangle(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left + WIDTH / 2, DISTANCE_FROM_CENTER + HEIGHT / 2, cardImages.getCardWidth(), cardImages.getCardHeight());
+		int left = -((FACE_DOWN_SEQUENCE_MARGIN - 1) + cardImages.getCardWidth()) * 3 / 2 + FACE_UP_OFFSET_FROM_FACE_DOWN;
+		return new Rectangle(i * (cardImages.getCardWidth() + FACE_DOWN_SEQUENCE_MARGIN) + left + WIDTH / 2, DISTANCE_FROM_CENTER + HEIGHT / 2, cardImages.getCardWidth(), cardImages.getCardHeight());
 	}
 
 	private Point2D getFaceUpCardLocation(Player p, int i) {
 		//TODO: share with getLocalFaceUpCardBounds
-		final int OPEN_HAND_SPACING = 2;
-		final int CLOSED_HAND_SPACING = 4;
-		//closest we can get without 5 players colliding
-		final int DISTANCE_FROM_CENTER = 160;
-		int left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * 3 / 2 + CLOSED_HAND_SPACING;
-		Point2D pt = transform(getRotation(p), new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER));
+		int left = -((FACE_DOWN_SEQUENCE_MARGIN - 1) + cardImages.getCardWidth()) * 3 / 2 + FACE_UP_OFFSET_FROM_FACE_DOWN;
+		Point2D pt = transform(getRotation(p), new Point(i * (cardImages.getCardWidth() + FACE_DOWN_SEQUENCE_MARGIN) + left, DISTANCE_FROM_CENTER));
 		return pt;
 	}
 
@@ -287,16 +286,13 @@ public class ShitheadPanel extends JComponent {
 			playerIndices[i].shifted(delta);
 
 		double rot = getRotation(p);
-		final int OPEN_HAND_SPACING = 2;
-		//closest we can get without 5 players colliding
-		final int DISTANCE_FROM_CENTER = 160;
 		int i = 0;
-		int left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * 3 / 2;
+		int left = -((FACE_DOWN_SEQUENCE_MARGIN - 1) + cardImages.getCardWidth()) * 3 / 2;
 		cardsReadLock.lock();
 		try {
 			for (i = 0; i < curCardRanges.getFaceDownLength(); i++) {
 				CardEntity c = cards.get(curCardRanges.getFaceDownStart() + i);
-				c.mark(transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER)), rot, 1);
+				c.mark(transform(rot, new Point(i * (cardImages.getCardWidth() + FACE_DOWN_SEQUENCE_MARGIN) + left, DISTANCE_FROM_CENTER)), rot, 1);
 				c.reset();
 				c.setShow(false);
 			}
@@ -347,40 +343,19 @@ public class ShitheadPanel extends JComponent {
 			playerIndices[i].shifted(delta);
 
 		double rot = getRotation(p);
-		final int OPEN_HAND_SPACING = 2;
-		final int CLOSED_HAND_SPACING = 4;
-		//closest we can get without 5 players colliding
-		final int DISTANCE_FROM_CENTER = 160;
-		int i;
-		int left;
-		if (((GuiPlayer) p).isThinking()) {
-			i = 0;
-			left = -((OPEN_HAND_SPACING - 1) + cardImages.getCardWidth()) * p.getHand().size() / 2;
-			cardsReadLock.lock();
-			try {
-				for (i = 0; i < curCardRanges.getHandLength(); i++) {
-					CardEntity c = cards.get(curCardRanges.getHandStart() + i);
-					c.mark(transform(rot, new Point(i * (cardImages.getCardWidth() + OPEN_HAND_SPACING) + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
-					c.reset();
-					c.setShow(p.getPlayerId() == model.getLocalPlayerNumber());
-				}
-			} finally {
-				cardsReadLock.unlock();
+		final int SEQUENCE_OFFSET = ((GuiPlayer) p).isThinking() ? (curCardRanges.getHandLength() <= 1 ? 0 : Math.min(HAND_SEQUENCE_MARGIN + cardImages.getCardWidth(), (WIDTH - cardImages.getCardWidth()) / (curCardRanges.getHandLength() - 1))) : HAND_SEQUENCE_OFFSET;
+		int i = 0;
+		int left = -(cardImages.getCardWidth() + SEQUENCE_OFFSET * (p.getHand().size() - 1)) / 2;
+		cardsReadLock.lock();
+		try {
+			for (i = 0; i < curCardRanges.getHandLength(); i++) {
+				CardEntity c = cards.get(curCardRanges.getHandStart() + i);
+				c.mark(transform(rot, new Point(i * SEQUENCE_OFFSET + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
+				c.reset();
+				c.setShow(p.getPlayerId() == model.getLocalPlayerNumber());
 			}
-		} else {
-			i = 0;
-			left = -(cardImages.getCardWidth() + CLOSED_HAND_SPACING * (p.getHand().size() - 1)) / 2;
-			cardsReadLock.lock();
-			try {
-				for (i = 0; i < curCardRanges.getHandLength(); i++) {
-					CardEntity c = cards.get(curCardRanges.getHandStart() + i);
-					c.mark(transform(rot, new Point(i * CLOSED_HAND_SPACING + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
-					c.reset();
-					c.setShow(p.getPlayerId() == model.getLocalPlayerNumber());
-				}
-			} finally {
-				cardsReadLock.unlock();
-			}
+		} finally {
+			cardsReadLock.unlock();
 		}
 	}
 

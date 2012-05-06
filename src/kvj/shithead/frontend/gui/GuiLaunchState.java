@@ -192,12 +192,13 @@ public class GuiLaunchState {
 
 							GuiGame g = new GuiGame(playerCount, gamePanel);
 							gamePanel.setModel(g);
-							showGame(parent, parentLayout, gamePanel);
 
 							int i;
 							for (i = 0; i < connectedPlayers; i++)
 								g.constructRemotePlayer(i, client, false);
 							g.constructLocalPlayers(connectedPlayers, 1, client, false);
+							showGame(parent, parentLayout, gamePanel);
+
 							for (i = g.occupiedCount(); i < g.maxSize(); i++) {
 								gamePanel.drawHint("Waiting for " + (g.maxSize() - i) + " more player(s)...");
 								if (client.socket().getInputStream().read() == PacketMaker.ADD_PLAYER)
