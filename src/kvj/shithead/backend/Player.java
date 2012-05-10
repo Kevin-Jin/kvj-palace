@@ -144,6 +144,10 @@ public abstract class Player {
 		state.g.transferDiscardPile(state.pickedUp);
 		pickedUpCards(state);
 		state.events.add(new PlayEvent.PilePickedUp());
+	}
+
+	private void startNewPile(TurnContext state, String message) {
+		pickUpPile(state, message);
 
 		switchToHand(state);
 		state.selection = chooseCard(state, "Choose first card of new discard pile", false, false, true);
@@ -221,16 +225,19 @@ public abstract class Player {
 			state.selection = chooseCard(state, "Choose first card to play", false, true, true);
 
 			if (state.selection == null) {
-				pickUpPile(state, "You are unwilling to make any moves.");
+				//TODO: let player play an unplayable face up card
+				//so they can move that card to their hand along with
+				//the picked up pile
+				startNewPile(state, "You are unwilling to make any moves.");
 			} else if (!state.g.isMoveLegal(state.selection)) {
 				assert state.blind;
 				putCard(state);
-				pickUpPile(state, "You lost the gamble!");
+				startNewPile(state, "You flipped an unplayable card.");
 			} else {
 				finishTurn(state);
 			}
 		} else {
-			pickUpPile(state, "You are unable to make any moves.");
+			startNewPile(state, "You are unable to make any moves.");
 		}
 
 		currentCx = null;

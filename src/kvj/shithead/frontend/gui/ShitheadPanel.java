@@ -241,6 +241,7 @@ public class ShitheadPanel extends JComponent {
 								card.mark();
 							else
 								card.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
+							input.unmark();
 							dragged = card;
 							dragged.setShow(true);
 							tempDrawOver.add(dragged);

@@ -5,6 +5,7 @@ import java.net.Socket;
 
 public class Client {
 	private final Socket connection;
+	private boolean closed;
 	public final byte[] buffer;
 	private int bufferLimit;
 
@@ -15,6 +16,8 @@ public class Client {
 	}
 
 	public boolean fillBuffer(int min) {
+		if (closed)
+			return false;
 		assert buffer.length >= min;
 		int read = 0;
 		try {
@@ -42,6 +45,8 @@ public class Client {
 	}
 
 	public void send(byte[] message) {
+		if (closed)
+			return;
 		try {
 			connection.getOutputStream().write(message);
 		} catch (IOException e) {
@@ -50,6 +55,10 @@ public class Client {
 	}
 
 	private void close(String message) {
+		//only game loop thread should access this method, so this is thread safe
+		if (closed)
+			return;
+		closed = true;
 		System.err.println("Closed connection to " + connection.getInetAddress() + ": " + message);
 		try {
 			connection.close();
