@@ -184,8 +184,8 @@ public class CliLocalPlayer extends Player {
 
 	@Override
 	protected void pickUpPile(TurnContext state, String message) {
-		System.out.println(message);
 		super.pickUpPile(state, message);
+		System.out.println(message);
 	}
 
 	@Override
