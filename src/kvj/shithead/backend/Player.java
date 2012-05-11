@@ -27,7 +27,7 @@ public abstract class Player {
 	private final List<Card> hand;
 	private final int playerId;
 	protected final PlayerAdapter adapter;
-	protected TurnContext currentCx;
+	protected volatile TurnContext currentCx;
 
 	public Player(int playerId, PlayerAdapter adapter) {
 		faceDown = new ArrayList<Card>();
@@ -54,12 +54,14 @@ public abstract class Player {
 	}
 
 	public void sortHand() {
-		Collections.sort(hand, new Comparator<Card>() {
-			@Override
-			public int compare(Card card1, Card card2) {
-				return card1.getRank().compareTo(card2.getRank());
-			}
-		});
+		synchronized (getHand()) {
+			Collections.sort(getHand(), new Comparator<Card>() {
+				@Override
+				public int compare(Card card1, Card card2) {
+					return card1.getRank().compareTo(card2.getRank());
+				}
+			});
+		}
 	}
 
 	public TurnContext getCurrentContext() {
@@ -69,7 +71,9 @@ public abstract class Player {
 	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile, boolean canSkip);
 
 	protected void moveFromHandToFaceUp(TurnContext state) {
-		getHand().remove(state.selection);
+		synchronized (getHand()) {
+			getHand().remove(state.selection);
+		}
 		synchronized (getFaceUp()) {
 			getFaceUp().add(state.selection);
 		}
@@ -134,8 +138,10 @@ public abstract class Player {
 	}
 
 	private void pickedUpCards(TurnContext state) {
-		getHand().addAll(state.pickedUp);
-		sortHand();
+		synchronized (getHand()) {
+			getHand().addAll(state.pickedUp);
+			sortHand();
+		}
 		cardsPickedUp(state);
 		state.pickedUp.clear();
 	}

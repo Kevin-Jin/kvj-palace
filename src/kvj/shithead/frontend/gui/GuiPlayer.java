@@ -7,7 +7,7 @@ import kvj.shithead.backend.adapter.PlayerAdapter;
 
 public abstract class GuiPlayer extends Player {
 	protected final GuiGame model;
-	private boolean waiting;
+	private volatile boolean waiting;
 
 	public GuiPlayer(int playerId, PlayerAdapter adapter, GuiGame model) {
 		super(playerId, adapter);

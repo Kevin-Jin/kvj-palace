@@ -52,13 +52,13 @@ public class ShitheadPanel extends JComponent {
 	private static final int HAND_SEQUENCE_OFFSET = 4;
 	private static final int HAND_SEQUENCE_MARGIN = 2;
 
-	private List<CardEntity> cards;
-	private Lock cardsReadLock, cardsWriteLock;
-	private Set<CardEntity> tempDrawOver;
+	private final List<CardEntity> cards;
+	private final Lock cardsReadLock, cardsWriteLock;
+	private final Set<CardEntity> tempDrawOver;
 	private CardEntity dragged;
 	private GuiGame model;
-	private ShitheadController input;
-	private ImageCache cardImages;
+	private final ShitheadController input;
+	private final ImageCache cardImages;
 	private PlayerCardsRange[] playerIndices;
 
 	public ShitheadPanel() {
@@ -374,7 +374,7 @@ public class ShitheadPanel extends JComponent {
 		double rot = getRotation(p);
 		final int SEQUENCE_OFFSET = ((GuiPlayer) p).isThinking() ? (curCardRanges.getHandLength() <= 1 ? 0 : Math.min(HAND_SEQUENCE_MARGIN + cardImages.getCardWidth(), (WIDTH - cardImages.getCardWidth()) / (curCardRanges.getHandLength() - 1))) : HAND_SEQUENCE_OFFSET;
 		int i = 0;
-		int left = -(cardImages.getCardWidth() + SEQUENCE_OFFSET * (p.getHand().size() - 1)) / 2;
+		int left = -(cardImages.getCardWidth() + SEQUENCE_OFFSET * (hand.size() - 1)) / 2;
 		cardsReadLock.lock();
 		try {
 			for (i = 0; i < curCardRanges.getHandLength(); i++) {
@@ -420,6 +420,10 @@ public class ShitheadPanel extends JComponent {
 		}
 	}
 
+	/**
+	 * Must be called from the game loop thread to ensure thread-safety.
+	 * @param p
+	 */
 	public void remotePlayerPutCard(Player p, Card c) {
 		TurnContext cx = p.getCurrentContext();
 		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];

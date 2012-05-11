@@ -12,13 +12,13 @@ public class CardEntity {
 	private static final double VELOCITY = 640d;
 
 	private final Card value;
-	private boolean show;
+	private volatile boolean show;
 
 	private final Point2D initPos, finalPos, curPos, markedPos;
-	private double initRot, finalRot, curRot, markedRot;
-	private double initScale, finalScale, curScale, markedScale;
-	private double vX, vY;
-	private boolean stopped, atHome;
+	private volatile double initRot, finalRot, curRot, markedRot;
+	private volatile double initScale, finalScale, curScale, markedScale;
+	private volatile double vX, vY;
+	private volatile boolean stopped, atHome;
 
 	public CardEntity(Card value, boolean show, Point2D pos, double rotation) {
 		this.value = value;

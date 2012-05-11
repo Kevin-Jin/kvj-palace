@@ -31,7 +31,7 @@ public class Card {
 			cache = Collections.unmodifiableMap(namesToRanks);
 		}
 
-		private String altStr;
+		private final String altStr;
 
 		private Rank(String alternate) {
 			altStr = alternate;

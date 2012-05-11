@@ -4,7 +4,7 @@ public abstract class PlayEvent {
 	public abstract String toString();
 
 	public static class HandToFaceUp extends PlayEvent {
-		private Card card;
+		private final Card card;
 
 		public HandToFaceUp(Card card) {
 			this.card = card;
@@ -17,7 +17,7 @@ public abstract class PlayEvent {
 	}
 
 	public static class CardPlayed extends PlayEvent {
-		private Card card;
+		private final Card card;
 
 		public CardPlayed(Card card) {
 			this.card = card;

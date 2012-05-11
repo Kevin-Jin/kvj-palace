@@ -7,7 +7,7 @@ import kvj.shithead.backend.TurnContext;
 import kvj.shithead.backend.adapter.PlayerAdapter;
 
 public class GuiRemotePlayer extends GuiPlayer {
-	protected final Client client;
+	private final Client client;
 
 	public GuiRemotePlayer(int playerId, PlayerAdapter adapter, Client client, GuiGame model) {
 		super(playerId, adapter, model);

@@ -1,10 +1,10 @@
 package kvj.shithead.frontend.gui;
 
 public class PlayerCardsRange {
-	private int startIndex;
-	private int faceDownLength;
-	private int faceUpLength;
-	private int handLength;
+	private volatile int startIndex;
+	private volatile int faceDownLength;
+	private volatile int faceUpLength;
+	private volatile int handLength;
 
 	public int getFaceDownStart() {
 		return startIndex;
@@ -34,6 +34,11 @@ public class PlayerCardsRange {
 		return startIndex + faceDownLength + faceUpLength + handLength;
 	}
 
+	//the following methods aren't atomic, but we never
+	//should have high enough concurrency that it would
+	//be necessary - we only made the variables volatile
+	//since they can be accessed from the EDT or the
+	//game loop thread, but never simultaneously
 	public void shifted(int delta) {
 		startIndex += delta;
 	}

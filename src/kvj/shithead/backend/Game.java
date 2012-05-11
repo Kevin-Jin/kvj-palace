@@ -10,9 +10,9 @@ public abstract class Game {
 	protected final List<Card> discardPile;
 	protected final Player[] players;
 	protected final Set<Integer> remainingPlayers;
-	protected int currentPlayer;
+	protected volatile int currentPlayer;
 	protected final List<Client> connected;
-	protected int connectedCount = 0;
+	protected int connectedCount;
 
 	public Game(int playerCount) {
 		drawPile = new Deck();
@@ -35,15 +35,17 @@ public abstract class Game {
 	}
 
 	public void deal() {
-		for (int i = 0; i < 3; i++)
-			for (int j = 0; j < players.length; j++)
-				players[j].getFaceDown().add(draw());
-		for (int i = 0; i < 6; i++)
-			for (int j = 0; j < players.length; j++)
-				players[j].getHand().add(draw());
-
-		for (int i = 0; i < players.length; i++)
-			players[i].sortHand();
+		for (int j = 0; j < players.length; j++) {
+			synchronized (players[j].getFaceDown()) {
+				for (int i = 0; i < 3; i++)
+					players[j].getFaceDown().add(draw());
+			}
+			synchronized (players[j].getHand()) {
+				for (int i = 0; i < 6; i++)
+					players[j].getHand().add(draw());
+				players[j].sortHand();
+			}
+		}
 	}
 
 	public Player getPlayer(int playerId) {
@@ -92,10 +94,12 @@ public abstract class Game {
 			}
 		}
 
-		players[currentPlayer].getHand().remove(lowestCard);
+		synchronized (players[currentPlayer].getHand()) {
+			players[currentPlayer].getHand().remove(lowestCard);
+			players[currentPlayer].getHand().add(draw());
+			players[currentPlayer].sortHand();
+		}
 		addToDiscardPile(lowestCard);
-		players[currentPlayer].getHand().add(draw());
-		players[currentPlayer].sortHand();
 	}
 
 	public abstract void run();

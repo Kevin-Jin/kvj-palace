@@ -27,8 +27,8 @@ import kvj.shithead.backend.PacketMaker;
 public class GuiLaunchState {
 	private static final int DEFAULT_PORT = 32421;
 
-	private Timer refresher;
-	private Thread gameLoop;
+	private volatile Timer refresher;
+	private volatile Thread gameLoop;
 
 	private void showGame(final JPanel parent, final CardLayout parentLayout, final ShitheadPanel gamePanel) {
 		//~120 fps so it looks smooth even without vsync

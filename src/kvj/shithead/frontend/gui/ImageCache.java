@@ -12,7 +12,7 @@ import kvj.shithead.backend.Card;
 
 public class ImageCache {
 	private BufferedImage back;
-	private Map<Card.Suit, Map<Card.Rank, BufferedImage>> fronts;
+	private final Map<Card.Suit, Map<Card.Rank, BufferedImage>> fronts;
 	private int cardWidth, cardHeight;
 
 	public ImageCache() {

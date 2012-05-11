@@ -9,7 +9,7 @@ import kvj.shithead.backend.adapter.HostAdapter;
 import kvj.shithead.backend.adapter.NoOperationAdapter;
 
 public class GuiGame extends Game {
-	private int localPlayer;
+	private volatile int localPlayer;
 	private final ShitheadPanel view;
 
 	public GuiGame(int playerCount, ShitheadPanel view) {

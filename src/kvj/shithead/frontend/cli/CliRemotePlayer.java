@@ -9,7 +9,7 @@ import kvj.shithead.backend.TurnContext;
 import kvj.shithead.backend.adapter.PlayerAdapter;
 
 public class CliRemotePlayer extends Player {
-	protected final Client client;
+	private final Client client;
 
 	public CliRemotePlayer(int playerId, PlayerAdapter adapter, Client client) {
 		super(playerId, adapter);
