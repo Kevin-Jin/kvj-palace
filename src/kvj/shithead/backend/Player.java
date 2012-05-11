@@ -54,14 +54,12 @@ public abstract class Player {
 	}
 
 	public void sortHand() {
-		synchronized (getHand()) {
-			Collections.sort(getHand(), new Comparator<Card>() {
-				@Override
-				public int compare(Card card1, Card card2) {
-					return card1.getRank().compareTo(card2.getRank());
-				}
-			});
-		}
+		Collections.sort(getHand(), new Comparator<Card>() {
+			@Override
+			public int compare(Card card1, Card card2) {
+				return card1.getRank().compareTo(card2.getRank());
+			}
+		});
 	}
 
 	public TurnContext getCurrentContext() {
@@ -70,13 +68,22 @@ public abstract class Player {
 
 	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile, boolean canSkip);
 
+	protected void removeCard(List<Card> playable, Card c) {
+		playable.remove(c);
+	}
+
+	protected void addCard(List<Card> playable, Card c) {
+		playable.add(c);
+	}
+
+	protected void addToHand(List<Card> add) {
+		getHand().addAll(add);
+		sortHand();
+	}
+
 	protected void moveFromHandToFaceUp(TurnContext state) {
-		synchronized (getHand()) {
-			getHand().remove(state.selection);
-		}
-		synchronized (getFaceUp()) {
-			getFaceUp().add(state.selection);
-		}
+		removeCard(getHand(), state.selection);
+		addCard(getFaceUp(), state.selection);
 		state.events.add(new PlayEvent.HandToFaceUp(state.selection));
 	}
 
@@ -130,18 +137,13 @@ public abstract class Player {
 	}
 
 	protected void putCard(TurnContext state) {
-		synchronized (state.currentPlayable) {
-			state.currentPlayable.remove(state.selection);
-		}
+		removeCard(state.currentPlayable, state.selection);
 		state.g.addToDiscardPile(state.selection);
 		state.events.add(new PlayEvent.CardPlayed(state.selection));
 	}
 
 	private void pickedUpCards(TurnContext state) {
-		synchronized (getHand()) {
-			getHand().addAll(state.pickedUp);
-			sortHand();
-		}
+		addToHand(state.pickedUp);
 		cardsPickedUp(state);
 		state.pickedUp.clear();
 	}

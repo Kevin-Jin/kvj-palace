@@ -34,17 +34,21 @@ public abstract class Game {
 		return drawPile.getList();
 	}
 
+	protected void fillFaceDown() {
+		for (int i = 0; i < 3; i++)
+			players[currentPlayer].getFaceDown().add(draw());
+	}
+
+	protected void fillHand() {
+		for (int i = 0; i < 6; i++)
+			players[currentPlayer].getHand().add(draw());
+		players[currentPlayer].sortHand();
+	}
+
 	public void deal() {
-		for (int j = 0; j < players.length; j++) {
-			synchronized (players[j].getFaceDown()) {
-				for (int i = 0; i < 3; i++)
-					players[j].getFaceDown().add(draw());
-			}
-			synchronized (players[j].getHand()) {
-				for (int i = 0; i < 6; i++)
-					players[j].getHand().add(draw());
-				players[j].sortHand();
-			}
+		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++) {
+			fillFaceDown();
+			fillHand();
 		}
 	}
 
@@ -82,6 +86,12 @@ public abstract class Game {
 		return lowest;
 	}
 
+	protected void replaceCard(Card c) {
+		players[currentPlayer].getHand().remove(c);
+		players[currentPlayer].getHand().add(draw());
+		players[currentPlayer].sortHand();
+	}
+
 	protected void findStartingPlayer() {
 		currentPlayer = 0;
 		Card lowestCard = null;
@@ -94,11 +104,7 @@ public abstract class Game {
 			}
 		}
 
-		synchronized (players[currentPlayer].getHand()) {
-			players[currentPlayer].getHand().remove(lowestCard);
-			players[currentPlayer].getHand().add(draw());
-			players[currentPlayer].sortHand();
-		}
+		replaceCard(lowestCard);
 		addToDiscardPile(lowestCard);
 	}
 
@@ -155,9 +161,7 @@ public abstract class Game {
 	}
 
 	public Card draw() {
-		synchronized (drawPile.getList()) {
-			return drawPile.pop();
-		}
+		return drawPile.pop();
 	}
 
 	public int remainingDrawCards() {

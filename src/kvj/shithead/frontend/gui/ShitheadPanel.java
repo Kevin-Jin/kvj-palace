@@ -203,10 +203,10 @@ public class ShitheadPanel extends JComponent {
 						}
 					//if cx.blind, we already flipped the face down card, so we must
 					//choose current selection no matter where we drop it
-					} else if (cx.blind || getDiscardPileBounds(model.getDiscardPileSize()).contains(input.getCursor())) {
+					} else if (cx.blind || getDiscardPileBounds(model.discardPileSize()).contains(input.getCursor())) {
 						if (((GuiLocalPlayer) p).moveLegal(dragged.getValue())) {
 							//assert dragged is from current player's face down, face up, or hand
-							dragged.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
+							dragged.mark(getDiscardPileLocation(model.discardPileSize()), 0, 1);
 							removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
 							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
 						} else {
@@ -240,7 +240,7 @@ public class ShitheadPanel extends JComponent {
 							if (!cx.blind)
 								card.mark();
 							else
-								card.mark(getDiscardPileLocation(model.getDiscardPileSize()), 0, 1);
+								card.mark(getDiscardPileLocation(model.discardPileSize()), 0, 1);
 							input.unmark();
 							dragged = card;
 							dragged.setShow(true);
@@ -459,7 +459,7 @@ public class ShitheadPanel extends JComponent {
 				ent.reset();
 			} else {
 				removeCardFromPlayerAndPutOnDiscardPile(cx, p, ent);
-				ent.mark(getDiscardPileLocation(model.getDiscardPileSize() - 1), 0, 1);
+				ent.mark(getDiscardPileLocation(model.discardPileSize() - 1), 0, 1);
 				ent.reset();
 			}
 		}
@@ -510,7 +510,7 @@ public class ShitheadPanel extends JComponent {
 		if (model.getCurrentPlayer() == model.getLocalPlayerNumber()) {
 			TurnContext cx = model.getPlayer(model.getCurrentPlayer()).getCurrentContext();
 			if (cx != null && !cx.choosingFaceUp) {
-				if (model.getDiscardPileSize() == 0)
+				if (model.discardPileSize() == 0)
 					drawWrappedString(g2d, new Point(discardPile.x + 2, discardPile.y), "Drop card here", discardPile.width);
 				else
 					g2d.drawString("Drop card on previously played cards", discardPile.x, discardPile.y - 1);

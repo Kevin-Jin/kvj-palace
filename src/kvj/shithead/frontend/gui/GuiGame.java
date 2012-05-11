@@ -1,5 +1,8 @@
 package kvj.shithead.frontend.gui;
 
+import java.util.List;
+
+import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
 import kvj.shithead.backend.Game;
 import kvj.shithead.backend.Player;
@@ -19,6 +22,34 @@ public class GuiGame extends Game {
 
 	public int getPlayerCount() {
 		return players.length;
+	}
+
+	@Override
+	public void populateDeck() {
+		synchronized (getDeckCards()) {
+			super.populateDeck();
+		}
+	}
+
+	@Override
+	public void setDeck(List<Card> cards) {
+		synchronized (getDeckCards()) {
+			super.setDeck(cards);
+		}
+	}
+
+	@Override
+	protected void fillFaceDown() {
+		synchronized (players[currentPlayer].getFaceDown()) {
+			super.fillFaceDown();
+		}
+	}
+
+	@Override
+	protected void fillHand() {
+		synchronized (players[currentPlayer].getHand()) {
+			super.fillHand();
+		}
 	}
 
 	@Override
@@ -42,6 +73,13 @@ public class GuiGame extends Game {
 			players[playerId] = new GuiRemotePlayer(playerId, NoOperationAdapter.getInstance(), client, this);
 		remainingPlayers.add(Integer.valueOf(playerId));
 		connectedCount++;
+	}
+
+	@Override
+	protected void replaceCard(Card c) {
+		synchronized (players[currentPlayer].getHand()) {
+			super.replaceCard(c);
+		}
 	}
 
 	@Override
@@ -72,6 +110,20 @@ public class GuiGame extends Game {
 			view.drawHint("Player " + (pId.intValue() + 1) + " is the shithead!");
 	}
 
+	@Override
+	public void addToDiscardPile(Card card) {
+		synchronized (discardPile) {
+			super.addToDiscardPile(card);
+		}
+	}
+
+	@Override
+	public void transferDiscardPile(List<Card> newLocation) {
+		synchronized (discardPile) {
+			super.transferDiscardPile(newLocation);
+		}
+	}
+
 	public int getLocalPlayerNumber() {
 		return localPlayer;
 	}
@@ -80,9 +132,16 @@ public class GuiGame extends Game {
 		return currentPlayer;
 	}
 
-	public int getDiscardPileSize() {
+	@Override
+	public int discardPileSize() {
 		synchronized (discardPile) {
-			return discardPile.size();
+			return super.discardPileSize();
+		}
+	}
+
+	public Card draw() {
+		synchronized (getDeckCards()) {
+			return super.draw();
 		}
 	}
 
