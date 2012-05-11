@@ -24,6 +24,18 @@ public class GuiGame extends Game {
 		return players.length;
 	}
 
+	public int getLocalPlayerNumber() {
+		return localPlayer;
+	}
+
+	public int getCurrentPlayer() {
+		return currentPlayer;
+	}
+
+	public ShitheadPanel getView() {
+		return view;
+	}
+
 	@Override
 	public void populateDeck() {
 		synchronized (getDeckCards()) {
@@ -124,14 +136,6 @@ public class GuiGame extends Game {
 		}
 	}
 
-	public int getLocalPlayerNumber() {
-		return localPlayer;
-	}
-
-	public int getCurrentPlayer() {
-		return currentPlayer;
-	}
-
 	@Override
 	public int discardPileSize() {
 		synchronized (discardPile) {
@@ -139,19 +143,17 @@ public class GuiGame extends Game {
 		}
 	}
 
+	@Override
 	public Card draw() {
 		synchronized (getDeckCards()) {
 			return super.draw();
 		}
 	}
 
-	public int getDrawDeckSize() {
+	@Override
+	public int remainingDrawCards() {
 		synchronized (getDeckCards()) {
-			return getDeckCards().size();
+			return super.remainingDrawCards();
 		}
-	}
-
-	public ShitheadPanel getView() {
-		return view;
 	}
 }

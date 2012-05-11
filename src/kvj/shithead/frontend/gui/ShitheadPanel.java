@@ -266,7 +266,7 @@ public class ShitheadPanel extends JComponent {
 				if (mark != null) {
 					input.unmark();
 					if (((GuiLocalPlayer) p).canEndTurn()) {
-						Rectangle deckBounds = getDrawPileBounds(Math.max(model.getDrawDeckSize() - 1, 0));
+						Rectangle deckBounds = getDrawPileBounds(Math.max(model.remainingDrawCards() - 1, 0));
 						if (deckBounds.contains(input.getCursor()) && deckBounds.contains(mark))
 							((GuiLocalPlayer) p).cardChosen(null);
 					}
@@ -515,7 +515,7 @@ public class ShitheadPanel extends JComponent {
 				else
 					g2d.drawString("Drop card on previously played cards", discardPile.x, discardPile.y - 1);
 
-				int drawDeckSize = model.getDrawDeckSize();
+				int drawDeckSize = model.remainingDrawCards();
 				if (drawDeckSize == 0) {
 					drawWrappedString(g2d, new Point(drawPile.x + 2, drawPile.y), "Click here to end turn", discardPile.width);
 				} else {
