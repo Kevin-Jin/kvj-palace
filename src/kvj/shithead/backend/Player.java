@@ -68,22 +68,9 @@ public abstract class Player {
 
 	public abstract Card chooseCard(TurnContext state, String selectText, boolean sameRank, boolean checkDiscardPile, boolean canSkip);
 
-	protected void removeCard(List<Card> playable, Card c) {
-		playable.remove(c);
-	}
-
-	protected void addCard(List<Card> playable, Card c) {
-		playable.add(c);
-	}
-
-	protected void addToHand(List<Card> add) {
-		getHand().addAll(add);
-		sortHand();
-	}
-
 	protected void moveFromHandToFaceUp(TurnContext state) {
-		removeCard(getHand(), state.selection);
-		addCard(getFaceUp(), state.selection);
+		getHand().remove(state.selection);
+		getFaceUp().add(state.selection);
 		state.events.add(new PlayEvent.HandToFaceUp(state.selection));
 	}
 
@@ -137,13 +124,14 @@ public abstract class Player {
 	}
 
 	protected void putCard(TurnContext state) {
-		removeCard(state.currentPlayable, state.selection);
+		state.currentPlayable.remove(state.selection);
 		state.g.addToDiscardPile(state.selection);
 		state.events.add(new PlayEvent.CardPlayed(state.selection));
 	}
 
 	private void pickedUpCards(TurnContext state) {
-		addToHand(state.pickedUp);
+		getHand().addAll(state.pickedUp);
+		sortHand();
 		cardsPickedUp(state);
 		state.pickedUp.clear();
 	}

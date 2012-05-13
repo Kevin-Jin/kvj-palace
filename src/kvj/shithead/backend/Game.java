@@ -34,21 +34,14 @@ public abstract class Game {
 		return drawPile.getList();
 	}
 
-	protected void fillFaceDown() {
-		for (int i = 0; i < 3; i++)
-			players[currentPlayer].getFaceDown().add(draw());
-	}
-
-	protected void fillHand() {
-		for (int i = 0; i < 6; i++)
-			players[currentPlayer].getHand().add(draw());
-		players[currentPlayer].sortHand();
-	}
-
 	public void deal() {
 		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++) {
-			fillFaceDown();
-			fillHand();
+			for (int i = 0; i < 3; i++)
+				players[currentPlayer].getFaceDown().add(draw());
+
+			for (int i = 0; i < 6; i++)
+				players[currentPlayer].getHand().add(draw());
+			players[currentPlayer].sortHand();
 		}
 	}
 
@@ -86,12 +79,6 @@ public abstract class Game {
 		return lowest;
 	}
 
-	protected void replaceCard(Card c) {
-		players[currentPlayer].getHand().remove(c);
-		players[currentPlayer].getHand().add(draw());
-		players[currentPlayer].sortHand();
-	}
-
 	protected void findStartingPlayer() {
 		currentPlayer = 0;
 		Card lowestCard = null;
@@ -104,22 +91,27 @@ public abstract class Game {
 			}
 		}
 
-		replaceCard(lowestCard);
+		players[currentPlayer].getHand().remove(lowestCard);
+		players[currentPlayer].getHand().add(draw());
+		players[currentPlayer].sortHand();
 		addToDiscardPile(lowestCard);
 	}
 
 	public abstract void run();
 
-	public boolean isMoveLegal(Card attempt) {
-		if (discardPile.isEmpty())
-			return true;
-		Card.Rank attemptRank = attempt.getRank();
-		Card.Rank topCardRank = discardPile.get(discardPile.size() - 1).getRank();
+	protected boolean isMoveLegal(Card.Rank attemptRank, Card.Rank topCardRank) {
 		if (attemptRank.compareTo(topCardRank) >= 0)
 			return true;
 		if (attemptRank == Card.Rank.TWO || attemptRank == Card.Rank.TEN || topCardRank == Card.Rank.TEN)
 			return true;
 		return false;
+	}
+
+	public boolean isMoveLegal(Card attempt) {
+		Card.Rank topCardRank = getTopCardRank();
+		if (topCardRank == null)
+			return true;
+		return isMoveLegal(attempt.getRank(), topCardRank);
 	}
 
 	public int getSameRankCount() {

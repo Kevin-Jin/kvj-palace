@@ -1,8 +1,5 @@
 package kvj.shithead.frontend.gui;
 
-import java.util.List;
-
-import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Game;
 import kvj.shithead.backend.Player;
 import kvj.shithead.backend.TurnContext;
@@ -25,38 +22,6 @@ public abstract class GuiPlayer extends Player {
 
 	public void putFirstCard() {
 		currentCx = null;
-	}
-
-	@Override
-	public void sortHand() {
-		//synchronizing here is not even necessary since
-		//our hand is always synchronized whiling calling
-		//this method. just leave this here to be safe
-		//and to be more consistent and clear
-		synchronized (getHand()) {
-			super.sortHand();
-		}
-	}
-
-	@Override
-	protected void removeCard(List<Card> playable, Card c) {
-		synchronized (playable) {
-			super.removeCard(playable, c);
-		}
-	}
-
-	@Override
-	protected void addCard(List<Card> playable, Card c) {
-		synchronized (playable) {
-			super.addCard(playable, c);
-		}
-	}
-
-	@Override
-	protected void addToHand(List<Card> add) {
-		synchronized (getHand()) {
-			super.addToHand(add);
-		}
 	}
 
 	@Override

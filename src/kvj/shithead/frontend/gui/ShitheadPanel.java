@@ -59,7 +59,11 @@ public class ShitheadPanel extends JComponent {
 	private GuiGame model;
 	private final ShitheadController input;
 	private final ImageCache cardImages;
+
 	private PlayerCardsRange[] playerIndices;
+	private CardRange drawDeckEntitiesRange;
+	private CardRange clearedPileEntitiesRange;
+	private CardRange discardPileEntitiesRange;
 
 	public ShitheadPanel() {
 		input = new ShitheadController();
@@ -80,8 +84,12 @@ public class ShitheadPanel extends JComponent {
 	public void setModel(GuiGame model) {
 		this.model = model;
 		playerIndices = new PlayerCardsRange[model.getPlayerCount()];
-		for (int i = 0; i < playerIndices.length; i++)
-			playerIndices[i] = new PlayerCardsRange();
+		playerIndices[0] = new PlayerCardsRange(null);
+		for (int i = 1; i < playerIndices.length; i++)
+			playerIndices[i] = new PlayerCardsRange(playerIndices[i - 1].getHandRange());
+		drawDeckEntitiesRange = new CardRange(playerIndices[playerIndices.length - 1].getHandRange());
+		clearedPileEntitiesRange = new CardRange(drawDeckEntitiesRange);
+		discardPileEntitiesRange = new CardRange(clearedPileEntitiesRange);
 	}
 
 	private Point2D transform(double rotation, Point2D pt) {
@@ -93,17 +101,31 @@ public class ShitheadPanel extends JComponent {
 		return pos;
 	}
 
+	/**
+	 * Must be called from the game loop thread to ensure thread-safety.
+	 */
 	public void makeDrawDeckEntities() {
 		int i = 0;
 		int right = -cardImages.getCardWidth() + DISCARD_PILE_OFFSET_FROM_CENTER + DRAW_DECK_OFFSET_FROM_DISCARD_PILE;
 		cardsWriteLock.lock();
 		try {
-			synchronized (model.getDeckCards()) {
-				for (Card card : model.getDeckCards())
-					cards.add(new CardEntity(card, false, transform(0, new Point(right - i++ * DRAW_CARDS_SEQUENCE_OFFSET, -cardImages.getCardHeight() / 2)), 0));
-			}
+			drawDeckEntitiesRange.lengthen(model.remainingDrawCards());
+			for (Card card : model.getDeckCards())
+				cards.add(new CardEntity(card, false, transform(0, new Point(right - i++ * DRAW_CARDS_SEQUENCE_OFFSET, -cardImages.getCardHeight() / 2)), 0));
 		} finally {
 			cardsWriteLock.unlock();
+		}
+	}
+
+	public Card.Rank topCardRank() {
+		cardsReadLock.lock();
+		try {
+			int discardPileSize = discardPileEntitiesRange.getLength();
+			if (discardPileSize == 0)
+				return null;
+			return cards.get(discardPileEntitiesRange.getStart() + discardPileSize - 1).getValue().getRank();
+		} finally {
+			cardsReadLock.unlock();
 		}
 	}
 
@@ -140,40 +162,43 @@ public class ShitheadPanel extends JComponent {
 		return pt;
 	}
 
+	private CardRange getCorrespondingCardRange(List<Card> playable, Player p) {
+		PlayerCardsRange r = playerIndices[p.getPlayerId()];
+		if (playable == p.getHand())
+			return r.getHandRange();
+		if (playable == p.getFaceUp())
+			return r.getFaceUpRange();
+		if (playable == p.getFaceDown())
+			return r.getFaceDownRange();
+		return null;
+	}
+
 	private void removeCardFromHandAndPutOnFaceUp(Player p, CardEntity card) {
 		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
 
 		cardsWriteLock.lock();
 		try {
+			curCardRanges.getHandRange().lengthen(-1);
+			curCardRanges.getFaceUpRange().lengthen(1);
+
 			cards.remove(card);
-			//this should put it after the other face up cards
-			cards.add(curCardRanges.getHandStart(), card);
+			cards.add(curCardRanges.getFaceUpRange().getStart() + curCardRanges.getFaceUpRange().getLength() - 1, card);
 		} finally {
 			cardsWriteLock.unlock();
 		}
-
-		curCardRanges.handLengthened(-1);
-		curCardRanges.faceUpLengthened(1);
 	}
 
 	private void removeCardFromPlayerAndPutOnDiscardPile(TurnContext cx, Player p, CardEntity card) {
 		cardsWriteLock.lock();
 		try {
+			getCorrespondingCardRange(cx.currentPlayable, p).lengthen(-1);
+			discardPileEntitiesRange.lengthen(1);
+
 			cards.remove(card);
-			//permanantly paint dragged last so it's on top of the discard pile
 			cards.add(card);
 		} finally {
 			cardsWriteLock.unlock();
 		}
-
-		if (cx.currentPlayable == p.getHand())
-			playerIndices[p.getPlayerId()].handLengthened(-1);
-		else if (cx.currentPlayable == p.getFaceUp())
-			playerIndices[p.getPlayerId()].faceUpLengthened(-1);
-		else if (cx.currentPlayable == p.getFaceDown())
-			playerIndices[p.getPlayerId()].faceDownLengthened(-1);
-		for (int i = p.getPlayerId() + 1; i < playerIndices.length; i++)
-			playerIndices[i].shifted(-1);
 	}
 
 	public void updateState(double tDelta) {
@@ -186,8 +211,11 @@ public class ShitheadPanel extends JComponent {
 				if (localPlayer) {
 					if (cx.choosingFaceUp) {
 						int faceUpSize;
-						synchronized (p.getFaceUp()) {
-							faceUpSize = p.getFaceUp().size();
+						cardsReadLock.lock();
+						try {
+							faceUpSize = playerIndices[p.getPlayerId()].getFaceUpRange().getLength();
+						} finally {
+							cardsReadLock.unlock();
 						}
 						if (getLocalFaceUpCardBounds(faceUpSize).contains(input.getCursor())) {
 							dragged.mark(getFaceUpCardLocation(p, faceUpSize), 0, 1);
@@ -203,14 +231,19 @@ public class ShitheadPanel extends JComponent {
 						}
 					//if cx.blind, we already flipped the face down card, so we must
 					//choose current selection no matter where we drop it
-					} else if (cx.blind || getDiscardPileBounds(model.discardPileSize()).contains(input.getCursor())) {
+					} else if (cx.blind || getDiscardPileBounds(discardPileEntitiesRange.getLength()).contains(input.getCursor())) {
 						if (((GuiLocalPlayer) p).moveLegal(dragged.getValue())) {
 							//assert dragged is from current player's face down, face up, or hand
-							dragged.mark(getDiscardPileLocation(model.discardPileSize()), 0, 1);
+							dragged.mark(getDiscardPileLocation(discardPileEntitiesRange.getLength()), 0, 1);
 							removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
 							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
 						} else {
-							drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cx.g.getTopCardRank() + ".");
+							cardsReadLock.lock();
+							try {
+								drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cards.get(cards.size() - 1).getValue().getRank() + ".");
+							} finally {
+								cardsReadLock.unlock();
+							}
 						}
 					}
 				}
@@ -231,21 +264,23 @@ public class ShitheadPanel extends JComponent {
 		//will be the first candidate for manipulation
 		cardsReadLock.lock();
 		try {
-			for (ListIterator<CardEntity> iter = cards.listIterator(cards.size()); iter.hasPrevious(); ) {
+			int index = cards.size() - 1;
+			CardRange draggableRange = getCorrespondingCardRange(cx.currentPlayable, p);
+			int draggableMinIndex = draggableRange.getStart();
+			int draggableMaxIndex = draggableMinIndex + draggableRange.getLength();
+			for (ListIterator<CardEntity> iter = cards.listIterator(cards.size()); iter.hasPrevious(); index--) {
 				CardEntity card = iter.previous();
 				card.update(tDelta);
 				if (findCardToDrag && card.isPointInCard(input.getCursor(), cardImages.getCardWidth(), cardImages.getCardHeight())) {
-					synchronized (cx.currentPlayable) {
-						if (cx.currentPlayable.contains(card.getValue())) {
-							if (!cx.blind)
-								card.mark();
-							else
-								card.mark(getDiscardPileLocation(model.discardPileSize()), 0, 1);
-							input.unmark();
-							dragged = card;
-							dragged.setShow(true);
-							tempDrawOver.add(dragged);
-						}
+					if (index >= draggableMinIndex && index < draggableMaxIndex) {
+						if (!cx.blind)
+							card.mark();
+						else
+							card.mark(getDiscardPileLocation(discardPileEntitiesRange.getLength()), 0, 1);
+						input.unmark();
+						dragged = card;
+						dragged.setShow(true);
+						tempDrawOver.add(dragged);
 					}
 					findCardToDrag = false;
 				}
@@ -266,7 +301,7 @@ public class ShitheadPanel extends JComponent {
 				if (mark != null) {
 					input.unmark();
 					if (((GuiLocalPlayer) p).canEndTurn()) {
-						Rectangle deckBounds = getDrawPileBounds(Math.max(model.remainingDrawCards() - 1, 0));
+						Rectangle deckBounds = getDrawPileBounds(Math.max(drawDeckEntitiesRange.getLength() - 1, 0));
 						if (deckBounds.contains(input.getCursor()) && deckBounds.contains(mark))
 							((GuiLocalPlayer) p).cardChosen(null);
 					}
@@ -287,40 +322,38 @@ public class ShitheadPanel extends JComponent {
 		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
 		List<Card> faceDown = p.getFaceDown();
 		List<CardEntity> moved = new ArrayList<CardEntity>(faceDown.size());
-		//All cards in updated face down should have come from old face down or draw deck
-		//so we don't have to worry about taking cards from other players and having to
-		//update their PlayerCardsRange.
-		//Since we assert that updated face down has cards only from old face down or draw deck,
-		//we can skip all the cards before our face down since our own face down comes after them,
-		//and cards from draw deck should come after all face downs.
 		int delta;
 		cardsWriteLock.lock();
 		try {
-			for (ListIterator<CardEntity> iter = cards.listIterator(curCardRanges.getFaceDownStart()); iter.hasNext() && moved.size() < faceDown.size(); ) {
-				CardEntity ent = iter.next();
-				if (faceDown.contains(ent.getValue())) {
-					iter.remove();
-					moved.add(ent);
+			CardRange[] sublists = { drawDeckEntitiesRange };
+			for (int i = 0; i < sublists.length && moved.size() < faceDown.size(); i++) {
+				CardRange bounds = sublists[i];
+				ListIterator<CardEntity> iter = cards.listIterator(bounds.getStart() + bounds.getLength());
+				for (int j = bounds.getLength() - 1; j >= 0 && moved.size() < faceDown.size(); j--) {
+					CardEntity ent = iter.previous();
+					if (faceDown.contains(ent.getValue())) {
+						iter.remove();
+						moved.add(ent);
+						bounds.lengthen(-1);
+					}
 				}
 			}
 			assert moved.size() == faceDown.size();
-			delta = moved.size() - curCardRanges.getFaceDownLength();
+			delta = moved.size() - curCardRanges.getFaceDownRange().getLength();
 
-			cards.addAll(curCardRanges.getFaceDownStart(), moved);
+			curCardRanges.getFaceDownRange().lengthen(delta);
+			cards.addAll(curCardRanges.getFaceDownRange().getStart(), moved);
 		} finally {
 			cardsWriteLock.unlock();
 		}
-		curCardRanges.faceDownLengthened(delta);
-		for (int i = p.getPlayerId() + 1; i < playerIndices.length; i++)
-			playerIndices[i].shifted(delta);
 
 		double rot = getRotation(p);
 		int i = 0;
 		int left = -((FACE_DOWN_SEQUENCE_MARGIN - 1) + cardImages.getCardWidth()) * 3 / 2;
 		cardsReadLock.lock();
 		try {
-			for (i = 0; i < curCardRanges.getFaceDownLength(); i++) {
-				CardEntity c = cards.get(curCardRanges.getFaceDownStart() + i);
+			for (i = 0; i < curCardRanges.getFaceDownRange().getLength(); i++) {
+				CardEntity c = cards.get(curCardRanges.getFaceDownRange().getStart() + i);
 				c.mark(transform(rot, new Point(i * (cardImages.getCardWidth() + FACE_DOWN_SEQUENCE_MARGIN) + left, DISTANCE_FROM_CENTER)), rot, 1);
 				c.reset();
 				c.setShow(false);
@@ -338,24 +371,24 @@ public class ShitheadPanel extends JComponent {
 		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
 		List<Card> hand = p.getHand();
 		List<CardEntity> moved = new ArrayList<CardEntity>(hand.size());
-		//All cards in updated hand should have come from old hand, draw deck, or discard pile
-		//so we don't have to worry about taking cards from other players and having to
-		//update their PlayerCardsRange.
-		//Since we assert that updated hand has cards only from old hand, draw deck, or discard pile,
-		//we can skip all the cards before our hand since our own hand comes after them,
-		//and cards from draw deck and discard pile should come after all hands.
 		int delta;
 		cardsWriteLock.lock();
 		try {
-			for (ListIterator<CardEntity> iter = cards.listIterator(curCardRanges.getHandStart()); iter.hasNext() && moved.size() < hand.size(); ) {
-				CardEntity ent = iter.next();
-				if (hand.contains(ent.getValue())) {
-					iter.remove();
-					moved.add(ent);
+			CardRange[] sublists = { curCardRanges.getHandRange(), drawDeckEntitiesRange, discardPileEntitiesRange };
+			for (int i = 0; i < sublists.length && moved.size() < hand.size(); i++) {
+				CardRange bounds = sublists[i];
+				ListIterator<CardEntity> iter = cards.listIterator(bounds.getStart() + bounds.getLength());
+				for (int j = bounds.getLength() - 1; j >= 0 && moved.size() < hand.size(); j--) {
+					CardEntity ent = iter.previous();
+					if (hand.contains(ent.getValue())) {
+						iter.remove();
+						moved.add(ent);
+						bounds.lengthen(-1);
+					}
 				}
 			}
 			assert moved.size() == hand.size();
-			delta = moved.size() - curCardRanges.getHandLength();
+			delta = moved.size() - curCardRanges.getHandRange().getLength();
 			Collections.sort(moved, new Comparator<CardEntity>() {
 				@Override
 				public int compare(CardEntity ent1, CardEntity ent2) {
@@ -363,22 +396,20 @@ public class ShitheadPanel extends JComponent {
 				}
 			});
 
-			cards.addAll(curCardRanges.getHandStart(), moved);
+			cards.addAll(curCardRanges.getHandRange().getStart(), moved);
 		} finally {
 			cardsWriteLock.unlock();
 		}
-		curCardRanges.handLengthened(delta);
-		for (int i = p.getPlayerId() + 1; i < playerIndices.length; i++)
-			playerIndices[i].shifted(delta);
+		curCardRanges.getHandRange().lengthen(delta);
 
 		double rot = getRotation(p);
-		final int SEQUENCE_OFFSET = ((GuiPlayer) p).isThinking() ? (curCardRanges.getHandLength() <= 1 ? 0 : Math.min(HAND_SEQUENCE_MARGIN + cardImages.getCardWidth(), (WIDTH - cardImages.getCardWidth()) / (curCardRanges.getHandLength() - 1))) : HAND_SEQUENCE_OFFSET;
+		final int SEQUENCE_OFFSET = ((GuiPlayer) p).isThinking() ? (curCardRanges.getHandRange().getLength() <= 1 ? 0 : Math.min(HAND_SEQUENCE_MARGIN + cardImages.getCardWidth(), (WIDTH - cardImages.getCardWidth()) / (curCardRanges.getHandRange().getLength() - 1))) : HAND_SEQUENCE_OFFSET;
 		int i = 0;
 		int left = -(cardImages.getCardWidth() + SEQUENCE_OFFSET * (hand.size() - 1)) / 2;
 		cardsReadLock.lock();
 		try {
-			for (i = 0; i < curCardRanges.getHandLength(); i++) {
-				CardEntity c = cards.get(curCardRanges.getHandStart() + i);
+			for (i = 0; i < curCardRanges.getHandRange().getLength(); i++) {
+				CardEntity c = cards.get(curCardRanges.getHandRange().getStart() + i);
 				c.mark(transform(rot, new Point(i * SEQUENCE_OFFSET + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
 				c.reset();
 				c.setShow(p.getPlayerId() == model.getLocalPlayerNumber());
@@ -398,25 +429,15 @@ public class ShitheadPanel extends JComponent {
 	}
 
 	public void playerClearedDiscardPile(Player p) {
-		cardsReadLock.lock();
+		cardsWriteLock.lock();
 		try {
-			synchronized (model.getDeckCards()) {
-				//this will start with the cards in the draw deck,
-				//skipping all the player cards
-				for (ListIterator<CardEntity> iter = cards.listIterator(playerIndices[playerIndices.length - 1].getEndIndexPlusOne()); iter.hasNext(); ) {
-					CardEntity ent = iter.next();
-					//if it's not a draw deck card, it has to be from the old discard pile
-					if (!model.getDeckCards().contains(ent.getValue())) {
-						//spin it twice just to convey that it's going down,
-						//and have it eventually shrink into nothing as it
-						//approaches the top left corner
-						ent.mark(new Point(0, 0), 4 * Math.PI, 0);
-						ent.reset();
-					}
-				}
+			for (ListIterator<CardEntity> iter = cards.listIterator(discardPileEntitiesRange.getStart()); iter.hasNext(); clearedPileEntitiesRange.lengthen(1), discardPileEntitiesRange.lengthen(-1)) {
+				CardEntity ent = iter.next();
+				ent.mark(new Point(0, 0), 4 * Math.PI, 0);
+				ent.reset();
 			}
 		} finally {
-			cardsReadLock.unlock();
+			cardsWriteLock.unlock();
 		}
 	}
 
@@ -426,24 +447,13 @@ public class ShitheadPanel extends JComponent {
 	 */
 	public void remotePlayerPutCard(Player p, Card c) {
 		TurnContext cx = p.getCurrentContext();
-		PlayerCardsRange curCardRanges = playerIndices[p.getPlayerId()];
-		int startIndex = -1;
-		int remaining = 0;
-		if (cx.currentPlayable == p.getHand()) {
-			startIndex = curCardRanges.getHandStart();
-			remaining = curCardRanges.getHandLength();
-		} else if (cx.currentPlayable == p.getFaceUp()) {
-			startIndex = curCardRanges.getFaceUpStart();
-			remaining = curCardRanges.getFaceUpLength();
-		} else if (cx.currentPlayable == p.getFaceDown()) {
-			startIndex = curCardRanges.getFaceDownStart();
-			remaining = curCardRanges.getFaceDownLength();
-		}
+		CardRange r = getCorrespondingCardRange(cx.currentPlayable, p);
 		CardEntity ent = null;
 		boolean found = false;
 		cardsReadLock.lock();
 		try {
-			for (ListIterator<CardEntity> iter = cards.listIterator(startIndex); iter.hasNext() && !found && remaining > 0; remaining--) {
+			int remaining = r.getLength();
+			for (Iterator<CardEntity> iter = cards.listIterator(r.getStart()); !found && remaining > 0; remaining--) {
 				ent = iter.next();
 				if (ent.getValue() == c)
 					found = true;
@@ -455,13 +465,16 @@ public class ShitheadPanel extends JComponent {
 			ent.setShow(true);
 			if (cx.choosingFaceUp) {
 				removeCardFromHandAndPutOnFaceUp(p, ent);
+				//playerIndices[p.getPlayerId()].getFaceUpRange().getLength() would work as well as p.getFaceUp().size()
+				//but this way doesn't need cardsReadLock to be locked (remember, we're in the game loop thread)
 				ent.mark(getFaceUpCardLocation(p, p.getFaceUp().size() - 1), getRotation(p), 1);
-				ent.reset();
 			} else {
 				removeCardFromPlayerAndPutOnDiscardPile(cx, p, ent);
+				//discardPileEntitiesRange.getLength().getLength() would work as well as p.getFaceUp().size()
+				//but this way doesn't need cardsReadLock to be locked (remember, we're in the game loop thread)
 				ent.mark(getDiscardPileLocation(model.discardPileSize() - 1), 0, 1);
-				ent.reset();
 			}
+			ent.reset();
 		}
 	}
 
@@ -510,12 +523,21 @@ public class ShitheadPanel extends JComponent {
 		if (model.getCurrentPlayer() == model.getLocalPlayerNumber()) {
 			TurnContext cx = model.getPlayer(model.getCurrentPlayer()).getCurrentContext();
 			if (cx != null && !cx.choosingFaceUp) {
-				if (model.discardPileSize() == 0)
+				int discardPileSize;
+				int drawDeckSize;
+				cardsReadLock.lock();
+				try {
+					discardPileSize = discardPileEntitiesRange.getLength();
+					drawDeckSize = drawDeckEntitiesRange.getLength();
+				} finally {
+					cardsReadLock.unlock();
+				}
+
+				if (discardPileSize == 0)
 					drawWrappedString(g2d, new Point(discardPile.x + 2, discardPile.y), "Drop card here", discardPile.width);
 				else
 					g2d.drawString("Drop card on previously played cards", discardPile.x, discardPile.y - 1);
 
-				int drawDeckSize = model.remainingDrawCards();
 				if (drawDeckSize == 0) {
 					drawWrappedString(g2d, new Point(drawPile.x + 2, drawPile.y), "Click here to end turn", discardPile.width);
 				} else {

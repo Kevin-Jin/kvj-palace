@@ -1,7 +1,5 @@
 package kvj.shithead.frontend.gui;
 
-import java.util.List;
-
 import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
 import kvj.shithead.backend.Game;
@@ -37,34 +35,6 @@ public class GuiGame extends Game {
 	}
 
 	@Override
-	public void populateDeck() {
-		synchronized (getDeckCards()) {
-			super.populateDeck();
-		}
-	}
-
-	@Override
-	public void setDeck(List<Card> cards) {
-		synchronized (getDeckCards()) {
-			super.setDeck(cards);
-		}
-	}
-
-	@Override
-	protected void fillFaceDown() {
-		synchronized (players[currentPlayer].getFaceDown()) {
-			super.fillFaceDown();
-		}
-	}
-
-	@Override
-	protected void fillHand() {
-		synchronized (players[currentPlayer].getHand()) {
-			super.fillHand();
-		}
-	}
-
-	@Override
 	public void constructLocalPlayers(int start, int amount, Client client, boolean host) {
 		for (int i = 0; i < amount; i++) {
 			if (host)
@@ -85,13 +55,6 @@ public class GuiGame extends Game {
 			players[playerId] = new GuiRemotePlayer(playerId, NoOperationAdapter.getInstance(), client, this);
 		remainingPlayers.add(Integer.valueOf(playerId));
 		connectedCount++;
-	}
-
-	@Override
-	protected void replaceCard(Card c) {
-		synchronized (players[currentPlayer].getHand()) {
-			super.replaceCard(c);
-		}
 	}
 
 	@Override
@@ -122,38 +85,13 @@ public class GuiGame extends Game {
 			view.drawHint("Player " + (pId.intValue() + 1) + " is the shithead!");
 	}
 
-	@Override
-	public void addToDiscardPile(Card card) {
-		synchronized (discardPile) {
-			super.addToDiscardPile(card);
-		}
-	}
-
-	@Override
-	public void transferDiscardPile(List<Card> newLocation) {
-		synchronized (discardPile) {
-			super.transferDiscardPile(newLocation);
-		}
-	}
-
-	@Override
-	public int discardPileSize() {
-		synchronized (discardPile) {
-			return super.discardPileSize();
-		}
-	}
-
-	@Override
-	public Card draw() {
-		synchronized (getDeckCards()) {
-			return super.draw();
-		}
-	}
-
-	@Override
-	public int remainingDrawCards() {
-		synchronized (getDeckCards()) {
-			return super.remainingDrawCards();
-		}
+	//GuiLocalPlayer.moveLegal runs in the EDT, and isMoveLegal uses the discardPile
+	//collection, which is not thread-safe. we need an alternative so that we don't need
+	//to lock discardPile
+	public boolean threadSafeIsMoveLegal(Card attempt) {
+		Card.Rank topCardRank = view.topCardRank();
+		if (topCardRank == null)
+			return true;
+		return isMoveLegal(attempt.getRank(), topCardRank);
 	}
 }

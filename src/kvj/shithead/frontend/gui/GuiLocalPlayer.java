@@ -35,7 +35,7 @@ public class GuiLocalPlayer extends GuiPlayer {
 	public boolean moveLegal(Card c) {
 		if (sameRankOnly)
 			return (currentCx.selection.getRank() == c.getRank());
-		return currentCx.blind || currentCx.g.isMoveLegal(c);
+		return currentCx.blind || model.threadSafeIsMoveLegal(c);
 	}
 
 	public boolean canEndTurn() {
