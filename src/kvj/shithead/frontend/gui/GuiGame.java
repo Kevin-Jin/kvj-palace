@@ -4,7 +4,6 @@ import kvj.shithead.backend.Card;
 import kvj.shithead.backend.Client;
 import kvj.shithead.backend.Game;
 import kvj.shithead.backend.Player;
-import kvj.shithead.backend.TurnContext;
 import kvj.shithead.backend.adapter.ClientAdapter;
 import kvj.shithead.backend.adapter.HostAdapter;
 import kvj.shithead.backend.adapter.NoOperationAdapter;
@@ -35,6 +34,14 @@ public class GuiGame extends Game {
 	}
 
 	@Override
+	protected void deal() {
+		view.makeDrawDeckEntities();
+		super.deal();
+		for (Player p : players)
+			view.dealtCards(p);
+	}
+
+	@Override
 	public void constructLocalPlayers(int start, int amount, Client client, boolean host) {
 		for (int i = 0; i < amount; i++) {
 			if (host)
@@ -58,31 +65,17 @@ public class GuiGame extends Game {
 	}
 
 	@Override
-	public void run() {
-		view.makeDrawDeckEntities();
-		deal();
-		for (Player p : players)
-			view.dealtCards(p);
-
-		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++)
-			players[currentPlayer].chooseFaceUp(this);
-
-		findStartingPlayer();
+	protected void startGame() {
+		super.startGame();
 		((GuiPlayer) players[currentPlayer]).startedGame();
 		view.remotePlayerPutCard(players[currentPlayer], discardPile.get(discardPile.size() - 1));
 		((GuiPlayer) players[currentPlayer]).putFirstCard();
 		view.playerPickedUpCards(players[currentPlayer]);
+	}
 
-		for (currentPlayer = (currentPlayer + 1) % players.length; remainingPlayers.size() > 1; currentPlayer = (currentPlayer + 1) % players.length) {
-			if (remainingPlayers.contains(Integer.valueOf(currentPlayer))) {
-				TurnContext cx = players[currentPlayer].playTurn(this);
-				if (cx.won)
-					remainingPlayers.remove(Integer.valueOf(currentPlayer));
-			}
-		}
-
-		for (Integer pId : remainingPlayers)
-			view.drawHint("Player " + (pId.intValue() + 1) + " is the shithead!");
+	@Override
+	protected void endGame(int loser) {
+		view.drawHint("Player " + (loser + 1) + " is the shithead!");
 	}
 
 	//GuiLocalPlayer.moveLegal runs in the EDT, and isMoveLegal uses the discardPile

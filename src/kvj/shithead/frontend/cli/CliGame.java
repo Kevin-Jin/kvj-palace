@@ -20,6 +20,12 @@ public class CliGame extends Game {
 	}
 
 	@Override
+	protected void deal() {
+		super.deal();
+		System.out.println();
+	}
+
+	@Override
 	public void constructLocalPlayers(int start, int amount, Client client, boolean host) {
 		for (int i = 0; i < amount; i++) {
 			if (host)
@@ -41,6 +47,11 @@ public class CliGame extends Game {
 		connectedCount++;
 	}
 
+	@Override
+	protected void endGame(int loser) {
+		System.out.println("Player " + (loser + 1) + " is the shithead!");
+	}
+
 	private void printSummary() {
 		for (Integer pId : remainingPlayers) {
 			int i = pId.intValue();
@@ -57,36 +68,30 @@ public class CliGame extends Game {
 	}
 
 	@Override
-	public void run() {
-		deal();
-		System.out.println();
-
-		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++) {
-			System.out.print("Player " + (currentPlayer + 1) + " must choose his/her face up cards. ");
-			TurnContext cx = players[currentPlayer].chooseFaceUp(this);
-			if (splitScreen && players[currentPlayer] instanceof CliLocalPlayer)
-				System.out.println("Player " + (currentPlayer + 1) + " " + cx.events + ".");
-		}
-
-		findStartingPlayer();
+	protected void startGame() {
+		super.startGame();
 		System.out.println("Player " + (currentPlayer + 1) + " started the game with a " + getTopCardRank() + ".");
+	}
 
-		for (currentPlayer = (currentPlayer + 1) % players.length; remainingPlayers.size() > 1; currentPlayer = (currentPlayer + 1) % players.length) {
-			if (remainingPlayers.contains(Integer.valueOf(currentPlayer))) {
-				printSummary();
-				System.out.print("It is now Player " + (currentPlayer + 1) + "'s turn. ");
+	@Override
+	protected TurnContext currentPlayerChooseFaceUp() {
+		System.out.print("Player " + (currentPlayer + 1) + " must choose his/her face up cards. ");
+		TurnContext cx = super.currentPlayerChooseFaceUp();
+		if (splitScreen && players[currentPlayer] instanceof CliLocalPlayer)
+			System.out.println("Player " + (currentPlayer + 1) + " " + cx.events + ".");
+		return cx;
+	}
 
-				TurnContext cx = players[currentPlayer].playTurn(this);
-				if (splitScreen && players[currentPlayer] instanceof CliLocalPlayer)
-					System.out.println("Player " + (currentPlayer + 1) + " " + cx.events + ".");
-				if (cx.won) {
-					System.out.println("Player " + (currentPlayer + 1) + " has won!");
-					remainingPlayers.remove(Integer.valueOf(currentPlayer));
-				}
-			}
-		}
+	@Override
+	protected TurnContext currentPlayerPlayTurn() {
+		printSummary();
+		System.out.print("It is now Player " + (currentPlayer + 1) + "'s turn. ");
 
-		for (Integer pId : remainingPlayers)
-			System.out.println("Player " + (pId.intValue() + 1) + " is the shithead!");
+		TurnContext cx = super.currentPlayerPlayTurn();
+		if (splitScreen && players[currentPlayer] instanceof CliLocalPlayer)
+			System.out.println("Player " + (currentPlayer + 1) + " " + cx.events + ".");
+		if (cx.won)
+			System.out.println("Player " + (currentPlayer + 1) + " has won!");
+		return cx;
 	}
 }

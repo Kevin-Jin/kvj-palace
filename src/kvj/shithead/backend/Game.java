@@ -34,14 +34,18 @@ public abstract class Game {
 		return drawPile.getList();
 	}
 
-	public void deal() {
-		for (currentPlayer = 0; currentPlayer < players.length; currentPlayer++) {
-			for (int i = 0; i < 3; i++)
-				players[currentPlayer].getFaceDown().add(draw());
+	protected void nextPlayer() {
+		currentPlayer = (currentPlayer + 1) % players.length;
+	}
 
-			for (int i = 0; i < 6; i++)
-				players[currentPlayer].getHand().add(draw());
-			players[currentPlayer].sortHand();
+	protected void deal() {
+		for (int i = 0; i < players.length; i++) {
+			for (int j = 0; j < 3; j++)
+				players[i].getFaceDown().add(draw());
+
+			for (int j = 0; j < 6; j++)
+				players[i].getHand().add(draw());
+			players[i].sortHand();
 		}
 	}
 
@@ -79,8 +83,7 @@ public abstract class Game {
 		return lowest;
 	}
 
-	protected void findStartingPlayer() {
-		currentPlayer = 0;
+	protected void startGame() {
 		Card lowestCard = null;
 
 		for (int i = 0; i < players.length; i++) {
@@ -97,7 +100,34 @@ public abstract class Game {
 		addToDiscardPile(lowestCard);
 	}
 
-	public abstract void run();
+	protected TurnContext currentPlayerChooseFaceUp() {
+		return players[currentPlayer].chooseFaceUp(this);
+	}
+
+	protected TurnContext currentPlayerPlayTurn() {
+		TurnContext cx = players[currentPlayer].playTurn(this);
+		if (cx.won)
+			remainingPlayers.remove(Integer.valueOf(currentPlayer));
+		return cx;
+	}
+
+	protected abstract void endGame(int loser);
+
+	public void run() {
+		deal();
+
+		for (int i = currentPlayer = 0; i < players.length; i++, nextPlayer())
+			currentPlayerChooseFaceUp();
+
+		startGame();
+
+		for (nextPlayer(); remainingPlayers.size() > 1; nextPlayer())
+			if (remainingPlayers.contains(Integer.valueOf(currentPlayer)))
+				currentPlayerPlayTurn();
+
+		for (Integer pId : remainingPlayers)
+			endGame(pId.intValue());
+	}
 
 	protected boolean isMoveLegal(Card.Rank attemptRank, Card.Rank topCardRank) {
 		if (attemptRank.compareTo(topCardRank) >= 0)

@@ -264,15 +264,13 @@ public class ShitheadPanel extends JComponent {
 		//will be the first candidate for manipulation
 		cardsReadLock.lock();
 		try {
-			int index = cards.size() - 1;
-			CardRange draggableRange = null;
-			int draggableMinIndex = -1;
-			int draggableMaxIndex = -1;
+			int draggableMinIndex = -1, draggableMaxIndex = -1;
 			if (findCardToDrag) {
-				draggableRange = getCorrespondingCardRange(cx.currentPlayable, p);
+				CardRange draggableRange = getCorrespondingCardRange(cx.currentPlayable, p);
 				draggableMinIndex = draggableRange.getStart();
 				draggableMaxIndex = draggableMinIndex + draggableRange.getLength();
 			}
+			int index = cards.size() - 1;
 			for (ListIterator<CardEntity> iter = cards.listIterator(cards.size()); iter.hasPrevious(); index--) {
 				CardEntity card = iter.previous();
 				card.update(tDelta);
