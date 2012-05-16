@@ -229,20 +229,29 @@ public class ShitheadPanel extends JComponent {
 								}
 							}
 						}
-					//if cx.blind, we already flipped the face down card, so we must
-					//choose current selection no matter where we drop it
-					} else if (cx.blind || getDiscardPileBounds(discardPileEntitiesRange.getLength()).contains(input.getCursor())) {
-						if (((GuiLocalPlayer) p).moveLegal(dragged.getValue())) {
-							//assert dragged is from current player's face down, face up, or hand
-							dragged.mark(getDiscardPileLocation(discardPileEntitiesRange.getLength()), 0, 1);
-							removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
-							((GuiLocalPlayer) p).cardChosen(dragged.getValue());
-						} else {
-							cardsReadLock.lock();
-							try {
-								drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cards.get(cards.size() - 1).getValue().getRank() + ".");
-							} finally {
-								cardsReadLock.unlock();
+					} else {
+						int discardPileSize;
+						cardsReadLock.lock();
+						try {
+							discardPileSize = discardPileEntitiesRange.getLength();
+						} finally {
+							cardsReadLock.unlock();
+						}
+						//if cx.blind, we already flipped the face down card, so we must
+						//choose current selection no matter where we drop it
+						if (cx.blind || getDiscardPileBounds(discardPileSize).contains(input.getCursor())) {
+							if (((GuiLocalPlayer) p).moveLegal(dragged.getValue())) {
+								//assert dragged is from current player's face down, face up, or hand
+								dragged.mark(getDiscardPileLocation(discardPileSize), 0, 1);
+								removeCardFromPlayerAndPutOnDiscardPile(cx, p, dragged);
+								((GuiLocalPlayer) p).cardChosen(dragged.getValue());
+							} else {
+								cardsReadLock.lock();
+								try {
+									drawHint("You may not put a " + dragged.getValue().getRank() + " on top of a " + cards.get(cards.size() - 1).getValue().getRank() + ".");
+								} finally {
+									cardsReadLock.unlock();
+								}
 							}
 						}
 					}
@@ -304,7 +313,14 @@ public class ShitheadPanel extends JComponent {
 				if (mark != null) {
 					input.unmark();
 					if (((GuiLocalPlayer) p).canEndTurn()) {
-						Rectangle deckBounds = getDrawPileBounds(Math.max(drawDeckEntitiesRange.getLength() - 1, 0));
+						int drawDeckSize;
+						cardsReadLock.lock();
+						try {
+							drawDeckSize = drawDeckEntitiesRange.getLength();
+						} finally {
+							cardsReadLock.unlock();
+						}
+						Rectangle deckBounds = getDrawPileBounds(Math.max(drawDeckSize - 1, 0));
 						if (deckBounds.contains(input.getCursor()) && deckBounds.contains(mark))
 							((GuiLocalPlayer) p).cardChosen(null);
 					}
@@ -399,18 +415,18 @@ public class ShitheadPanel extends JComponent {
 				}
 			});
 
+			curCardRanges.getHandRange().lengthen(delta);
 			cards.addAll(curCardRanges.getHandRange().getStart(), moved);
 		} finally {
 			cardsWriteLock.unlock();
 		}
-		curCardRanges.getHandRange().lengthen(delta);
 
 		double rot = getRotation(p);
-		final int SEQUENCE_OFFSET = ((GuiPlayer) p).isThinking() ? (curCardRanges.getHandRange().getLength() <= 1 ? 0 : Math.min(HAND_SEQUENCE_MARGIN + cardImages.getCardWidth(), (WIDTH - cardImages.getCardWidth()) / (curCardRanges.getHandRange().getLength() - 1))) : HAND_SEQUENCE_OFFSET;
 		int i = 0;
-		int left = -(cardImages.getCardWidth() + SEQUENCE_OFFSET * (hand.size() - 1)) / 2;
 		cardsReadLock.lock();
 		try {
+			final int SEQUENCE_OFFSET = ((GuiPlayer) p).isThinking() ? (curCardRanges.getHandRange().getLength() <= 1 ? 0 : Math.min(HAND_SEQUENCE_MARGIN + cardImages.getCardWidth(), (WIDTH - cardImages.getCardWidth()) / (curCardRanges.getHandRange().getLength() - 1))) : HAND_SEQUENCE_OFFSET;
+			int left = -(cardImages.getCardWidth() + SEQUENCE_OFFSET * (hand.size() - 1)) / 2;
 			for (i = 0; i < curCardRanges.getHandRange().getLength(); i++) {
 				CardEntity c = cards.get(curCardRanges.getHandRange().getStart() + i);
 				c.mark(transform(rot, new Point(i * SEQUENCE_OFFSET + left, DISTANCE_FROM_CENTER + cardImages.getCardHeight() + 1)), rot, 1);
@@ -473,7 +489,7 @@ public class ShitheadPanel extends JComponent {
 				ent.mark(getFaceUpCardLocation(p, p.getFaceUp().size() - 1), getRotation(p), 1);
 			} else {
 				removeCardFromPlayerAndPutOnDiscardPile(cx, p, ent);
-				//discardPileEntitiesRange.getLength().getLength() would work as well as p.getFaceUp().size()
+				//discardPileEntitiesRange.getLength() would work as well as model.discardPileSize()
 				//but this way doesn't need cardsReadLock to be locked (remember, we're in the game loop thread)
 				ent.mark(getDiscardPileLocation(model.discardPileSize() - 1), 0, 1);
 			}
